@@ -37,4 +37,19 @@ public class S3Service {
             throw new RuntimeException("AWS S3 서비스 오류: " + e.getMessage(), e);
         }
     }
+
+    public String uploadImg(MultipartFile profileImg, String Default_img) {
+        if (profileImg != null && !profileImg.isEmpty()) {
+            try {
+                String fileName = UUID.randomUUID().toString() + "_" + profileImg.getOriginalFilename();
+                return uploadFile(profileImg.getInputStream(), fileName);
+            } catch (IOException e) {
+                throw new RuntimeException("프로필 이미지 업로드 실패: " + e.getMessage(), e);
+            } catch (AmazonServiceException e) {
+                throw new RuntimeException("S3 서비스 오류: " + e.getMessage(), e);
+            }
+        } else {
+            return Default_img;
+        }
+    }
 }
