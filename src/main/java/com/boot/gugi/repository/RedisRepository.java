@@ -1,6 +1,7 @@
 package com.boot.gugi.repository;
 
 import com.boot.gugi.base.dto.TeamDTO;
+import com.boot.gugi.model.Team;
 import com.boot.gugi.model.TeamRank;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +28,7 @@ public class RedisRepository {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisRepository.class);
     private static final String TEAM_RANK_PREFIX = "team-rank:";
+    private static final String TEAM_CODE = "team-code:";
 
     private final TeamRankRepository teamRankRepository;
     private final RedisTemplate<String, String> redisTemplate;
@@ -117,5 +119,34 @@ public class RedisRepository {
             }
         }
         return rankResponses;
+    }
+
+    public void saveTeam(Team teamDetails) {
+        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
+        String teamInfoKey = TEAM_CODE + teamDetails.getTeamCode();
+
+        try {
+            String teamInfoJson = objectMapper.writeValueAsString(teamDetails);
+            valueOperations.set(teamInfoKey, teamInfoJson);
+        } catch (JsonProcessingException e) {
+            logger.error("Failed to convert TeamInfo object to Json. TeamCode: {}, Error: {}", teamDetails.getTeamCode(), e.getMessage(), e);
+        }
+    }
+
+    public TeamDTO.teamDetailsDTO findTeam(String teamCode) {
+        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
+        String teamInfoKey = TEAM_CODE + teamCode;
+        String teamInfoJson = valueOperations.get(teamInfoKey);
+
+        if (teamInfoJson != null) {
+            try {
+                TeamDTO.teamDetailsDTO teamDetails = objectMapper.readValue(teamInfoJson, TeamDTO.teamDetailsDTO.class);
+                logger.info("I found it. TeamCode: {}", teamCode);
+                return teamDetails;
+            } catch (JsonProcessingException e) {
+                logger.error("Failed to convert JSON to TeamInfo object. TeamCode: {}, Error: {}", teamCode, e.getMessage(), e);
+            }
+        }
+        return null;
     }
 }
