@@ -1,5 +1,6 @@
 package com.boot.gugi.base.dto;
 
+import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -35,5 +36,18 @@ public class TeamDTO {
         private Integer draw;
         private BigDecimal winningRate;
         private Integer difference;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class teamDetailsDTO {
+        private String teamCode;
+        private String teamName;
+        private String description;
+        private String instagram;
+        private String youtube;
+        private String ticketShop;
+        private String mdShop;
     }
 }
