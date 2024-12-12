@@ -1,6 +1,9 @@
 package com.boot.gugi.repository;
 
+import com.boot.gugi.base.dto.StadiumDTO;
 import com.boot.gugi.base.dto.TeamDTO;
+import com.boot.gugi.model.Food;
+import com.boot.gugi.model.Stadium;
 import com.boot.gugi.model.Team;
 import com.boot.gugi.model.TeamRank;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -10,11 +13,14 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,24 +34,53 @@ public class RedisRepository {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisRepository.class);
     private static final String TEAM_RANK_PREFIX = "team-rank:";
-    private static final String TEAM_CODE = "team-code:";
+    private static final String TEAM_CODE_PREFIX = "team-code:";
+    private static final String STADIUM_CODE_PREFIX = "stadium-code:";
+    private static final String FOOD_CODE_PREFIX = "food-code:";
 
     private final TeamRankRepository teamRankRepository;
     private final RedisTemplate<String, String> redisTemplate;
     private final RedissonClient redissonClient;
     private final ObjectMapper objectMapper;
 
-    public void saveRank(TeamRank savedRank) {
-        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
-        String teamRankKey = TEAM_RANK_PREFIX + savedRank.getTeamRank();
+    public void saveRank(TeamRank rankInfo) {
+        saveToRedis(TEAM_RANK_PREFIX + rankInfo.getTeamRank(), rankInfo, TEAM_RANK_EXPIRATION_TIME);
+    }
 
+    public void saveTeam(Team teamInfo) {
+        saveToRedis(TEAM_CODE_PREFIX + teamInfo.getTeamCode(), teamInfo, null);
+    }
+
+    public void saveStadium(Stadium stadiumInfo) {
+        saveToRedis(STADIUM_CODE_PREFIX + stadiumInfo.getStadiumCode(), stadiumInfo, null);
+    }
+
+    public void saveFood(Food foodDetails, Integer stadiumCode) {
+        String foodInfoKey = FOOD_CODE_PREFIX + stadiumCode;
         try {
-            String teamRankJson = objectMapper.writeValueAsString(savedRank);
-            valueOperations.set(teamRankKey, teamRankJson);
-            redisTemplate.expire(teamRankKey, TEAM_RANK_EXPIRATION_TIME, TimeUnit.MILLISECONDS);
+            String foodInfoJson = objectMapper.writeValueAsString(foodDetails);
+            SetOperations<String, String> setOperations = redisTemplate.opsForSet();
+            setOperations.add(foodInfoKey, foodInfoJson);
         } catch (JsonProcessingException e) {
-            logger.error("Failed to convert TeamRank object to JSON. TeamRank: {}, Error: {}", savedRank, e.getMessage(), e);
+            logError("FoodInfo", stadiumCode.toString(), e);
         }
+    }
+
+    private <T> void saveToRedis(String key, T object, Long expirationTime) {
+        try {
+            String json = objectMapper.writeValueAsString(object);
+            ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
+            valueOperations.set(key, json);
+            if (expirationTime != null) {
+                redisTemplate.expire(key, expirationTime, TimeUnit.MILLISECONDS);
+            }
+        } catch (JsonProcessingException e) {
+            logError(object.getClass().getSimpleName(), key, e);
+        }
+    }
+
+    private void logError(String objectType, String key, Exception e) {
+        logger.error("Failed to convert {} object to JSON. Key: {}, Error: {}", objectType, key, e.getMessage(), e);
     }
 
     public void updateRank(List<TeamRank> newScrapedData) {
@@ -121,21 +156,9 @@ public class RedisRepository {
         return rankResponses;
     }
 
-    public void saveTeam(Team teamDetails) {
-        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
-        String teamInfoKey = TEAM_CODE + teamDetails.getTeamCode();
-
-        try {
-            String teamInfoJson = objectMapper.writeValueAsString(teamDetails);
-            valueOperations.set(teamInfoKey, teamInfoJson);
-        } catch (JsonProcessingException e) {
-            logger.error("Failed to convert TeamInfo object to Json. TeamCode: {}, Error: {}", teamDetails.getTeamCode(), e.getMessage(), e);
-        }
-    }
-
     public TeamDTO.teamResponse findTeam(String teamCode) {
         ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
-        String teamInfoKey = TEAM_CODE + teamCode;
+        String teamInfoKey = TEAM_CODE_PREFIX + teamCode;
         String teamInfoJson = valueOperations.get(teamInfoKey);
 
         if (teamInfoJson != null) {
@@ -145,6 +168,37 @@ public class RedisRepository {
                 return teamDetails;
             } catch (JsonProcessingException e) {
                 logger.error("Failed to convert JSON to TeamInfo object. TeamCode: {}, Error: {}", teamCode, e.getMessage(), e);
+            }
+        }
+        return null;
+    }
+
+    public StadiumDTO.StadiumResponse findStadium(Integer stadiumCode) {
+        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
+        String stadiumInfoKey = STADIUM_CODE_PREFIX + stadiumCode;
+        String stadiumInfoJson = valueOperations.get(stadiumInfoKey);
+
+        SetOperations<String, String> setOperations = redisTemplate.opsForSet();
+        String foodInfoKey = FOOD_CODE_PREFIX + stadiumCode;
+        Set<String> foodInfoJsonSet = setOperations.members(foodInfoKey);
+
+        if (stadiumInfoJson != null) {
+            try {
+                StadiumDTO.StadiumResponse stadiumResponse = objectMapper.readValue(stadiumInfoJson, StadiumDTO.StadiumResponse.class);
+
+                if (foodInfoJsonSet != null && !foodInfoJsonSet.isEmpty()) {
+                    Set<StadiumDTO.FoodResponse> foodList = new HashSet<>();
+                    for (String foodInfoJson : foodInfoJsonSet) {
+                        StadiumDTO.FoodResponse foodResponse = objectMapper.readValue(foodInfoJson, StadiumDTO.FoodResponse.class);
+                        foodList.add(foodResponse);
+                    }
+                    stadiumResponse.setFoodList(foodList);
+                } else {
+                    return null;
+                }
+                return stadiumResponse;
+            } catch (JsonProcessingException e) {
+                logger.error("Failed to convert stadium JSON to StadiumResponse. Key: {}, Error: {}", stadiumInfoKey, e.getMessage(), e);
             }
         }
         return null;
