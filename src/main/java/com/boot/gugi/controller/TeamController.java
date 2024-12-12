@@ -7,8 +7,10 @@ import com.boot.gugi.model.Team;
 import com.boot.gugi.service.TeamService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/team")
@@ -18,17 +20,18 @@ public class TeamController {
     private final TeamService teamService;
 
     @GetMapping(value = "/details")
-    public ResponseEntity<ApiResponse<TeamDTO.teamDetailsDTO>> getTeam(@RequestParam @Valid String teamCode) {
+    public ResponseEntity<ApiResponse<TeamDTO.teamResponse>> getTeam(@RequestParam @Valid String teamCode) {
 
-        TeamDTO.teamDetailsDTO teamInfo = teamService.getTeamInfo(teamCode);
+        TeamDTO.teamResponse teamInfo = teamService.getTeamInfo(teamCode);
 
         return ApiResponse.onSuccess(SuccessStatus._GET, teamInfo);
     }
 
-    @PostMapping(value = "/details")
-    public ResponseEntity<ApiResponse<Team>> saveTeam(@RequestBody @Valid TeamDTO.teamDetailsDTO teamDetails) {
+    @PostMapping(value = "/details", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Team>> saveTeam(@RequestPart @Valid TeamDTO.teamRequest teamDetails,
+                                                      @RequestPart(value = "teamLogo", required = false) MultipartFile teamLogo) {
 
-        teamService.saveTeamInfo(teamDetails);
+        teamService.saveTeamInfo(teamDetails, teamLogo);
 
         return ApiResponse.onSuccess(SuccessStatus._OK);
     }
