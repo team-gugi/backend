@@ -1,6 +1,5 @@
 package com.boot.gugi.base.dto;
 
-import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -41,8 +40,22 @@ public class TeamDTO {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class teamDetailsDTO {
+    public static class teamRequest {
         private String teamCode;
+        private String teamName;
+        private String description;
+        private String instagram;
+        private String youtube;
+        private String ticketShop;
+        private String mdShop;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class teamResponse {
+        private String teamCode;
+        private String teamLogo;
         private String teamName;
         private String description;
         private String instagram;

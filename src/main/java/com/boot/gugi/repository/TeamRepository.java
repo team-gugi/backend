@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TeamRepository extends JpaRepository<Team, Long> {
 
-    TeamDTO.teamDetailsDTO findByTeamCode(String teamCode);
+    Team findByTeamCode(String teamCode);
 }
