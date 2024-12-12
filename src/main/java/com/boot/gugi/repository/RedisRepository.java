@@ -156,14 +156,14 @@ public class RedisRepository {
         return rankResponses;
     }
 
-    public TeamDTO.teamDetailsDTO findTeam(String teamCode) {
+    public TeamDTO.teamResponse findTeam(String teamCode) {
         ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
         String teamInfoKey = TEAM_CODE_PREFIX + teamCode;
         String teamInfoJson = valueOperations.get(teamInfoKey);
 
         if (teamInfoJson != null) {
             try {
-                TeamDTO.teamDetailsDTO teamDetails = objectMapper.readValue(teamInfoJson, TeamDTO.teamDetailsDTO.class);
+                TeamDTO.teamResponse teamDetails = objectMapper.readValue(teamInfoJson, TeamDTO.teamResponse.class);
                 logger.info("I found it. TeamCode: {}", teamCode);
                 return teamDetails;
             } catch (JsonProcessingException e) {

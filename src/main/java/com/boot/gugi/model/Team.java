@@ -18,6 +18,9 @@ public class Team {
     private String teamCode;
 
     @Column(nullable=false)
+    private String teamLogo;
+
+    @Column(nullable=false)
     private String teamName;
 
     @Column(nullable=false)
