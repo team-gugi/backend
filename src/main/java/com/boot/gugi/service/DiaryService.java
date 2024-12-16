@@ -23,7 +23,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -75,6 +78,17 @@ public class DiaryService {
         }
 
         return convertToDiaryDetailDto(existingDiary);
+    }
+
+    public List<DiaryDTO.DiarySingleDto> getAllDiary(HttpServletRequest request, HttpServletResponse response){
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+        List<Diary> diaries = diaryRepository.findByUserId(userId);
+
+        return diaries.stream()
+                .sorted(Comparator.comparing(Diary::getGameDate).reversed()
+                        .thenComparing(Comparator.comparing(Diary::getCreatedAt).reversed()))
+                .map(this::convertToDiarySingleDto)
+                .collect(Collectors.toList());
     }
 
     private GameResultEnum determineGameResult(Integer homeScore, Integer awayScore) {
@@ -180,6 +194,17 @@ public class DiaryService {
                 diary.getAwayScore(),
                 diary.getGameImg(),
                 diary.getContent(),
+                diary.getGameResult().toEnglish()
+        );
+    }
+
+    private DiaryDTO.DiarySingleDto convertToDiarySingleDto(Diary diary) {
+        return new DiaryDTO.DiarySingleDto(
+                diary.getDiaryId(),
+                diary.getGameDate(),
+                diary.getGameStadium().toKorean(),
+                diary.getHomeTeam().toKorean(),
+                diary.getAwayTeam().toKorean(),
                 diary.getGameResult().toEnglish()
         );
     }

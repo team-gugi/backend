@@ -9,4 +9,6 @@ import java.util.UUID;
 
 public interface DiaryRepository extends JpaRepository<Diary, UUID> {
     Optional<Diary> findByDiaryId(UUID diaryId);
+
+    List<Diary> findByUserId(UUID userId);
 }

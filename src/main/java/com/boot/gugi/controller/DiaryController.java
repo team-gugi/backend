@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -51,5 +52,13 @@ public class DiaryController {
         DiaryDTO.DiaryDetailDto diaryInfo = diaryService.getDiaryDetails(request, response, diaryId);
 
         return ApiResponse.onSuccess(SuccessStatus._GET, diaryInfo);
+    }
+
+    @GetMapping(value = "/all")
+    public ResponseEntity<ApiResponse<List<DiaryDTO.DiarySingleDto>>> getAllDiaries(HttpServletRequest request, HttpServletResponse response) {
+
+        List<DiaryDTO.DiarySingleDto> diaryList = diaryService.getAllDiary(request, response);
+
+        return ApiResponse.onSuccess(SuccessStatus._GET, diaryList);
     }
 }
