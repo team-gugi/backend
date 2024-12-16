@@ -65,6 +65,18 @@ public class DiaryService {
         diaryRepository.save(existingDiary);
     }
 
+    public DiaryDTO.DiaryDetailDto getDiaryDetails(HttpServletRequest request, HttpServletResponse response, UUID diaryId){
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+        Diary existingDiary = diaryRepository.findByDiaryId(diaryId)
+                .orElseThrow(() -> new PostException(PostErrorResult.NOT_FOUND_DIARY));
+
+        if (!existingDiary.getUserId().equals(userId)) {
+            throw new PostException(PostErrorResult.UNAUTHORIZED_ACCESS);
+        }
+
+        return convertToDiaryDetailDto(existingDiary);
+    }
+
     private GameResultEnum determineGameResult(Integer homeScore, Integer awayScore) {
         if (homeScore > awayScore) {
             return GameResultEnum.WIN;
@@ -155,5 +167,20 @@ public class DiaryService {
                 .content(postInfo.getContent())
                 .createdAt(createdAt)
                 .build();
+    }
+
+    private DiaryDTO.DiaryDetailDto convertToDiaryDetailDto(Diary diary) {
+        return new DiaryDTO.DiaryDetailDto(
+                diary.getDiaryId(),
+                diary.getGameDate(),
+                diary.getGameStadium().toKorean(),
+                diary.getHomeTeam().toKorean(),
+                diary.getAwayTeam().toKorean(),
+                diary.getHomeScore(),
+                diary.getAwayScore(),
+                diary.getGameImg(),
+                diary.getContent(),
+                diary.getGameResult().toEnglish()
+        );
     }
 }

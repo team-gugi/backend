@@ -43,4 +43,13 @@ public class DiaryController {
 
         return ApiResponse.onSuccess(SuccessStatus._UPDATED);
     }
+
+    @GetMapping(value = "/details")
+    public ResponseEntity<ApiResponse<DiaryDTO.DiaryDetailDto>> getDiaryDetails(HttpServletRequest request, HttpServletResponse response,
+                                                                                @RequestParam @Valid UUID diaryId) {
+
+        DiaryDTO.DiaryDetailDto diaryInfo = diaryService.getDiaryDetails(request, response, diaryId);
+
+        return ApiResponse.onSuccess(SuccessStatus._GET, diaryInfo);
+    }
 }
