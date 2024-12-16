@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/diary")
 @RequiredArgsConstructor
@@ -29,5 +31,16 @@ public class DiaryController {
         diaryService.createDiaryPost(request, response, diaryInfo, gameImg);
 
         return ApiResponse.onSuccess(SuccessStatus._CREATED);
+    }
+
+    @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Diary>> updateDiary(HttpServletRequest request, HttpServletResponse response,
+                                                          @RequestPart @Valid UUID diaryId,
+                                                          @RequestPart @Valid DiaryDTO.DiaryRequest diaryInfo,
+                                                          @RequestPart(value = "gameImg", required = false) MultipartFile gameImg) {
+
+        diaryService.updateDiaryPost(request, response, diaryId, diaryInfo, gameImg);
+
+        return ApiResponse.onSuccess(SuccessStatus._UPDATED);
     }
 }

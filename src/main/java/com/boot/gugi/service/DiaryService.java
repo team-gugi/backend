@@ -4,6 +4,8 @@ import com.boot.gugi.base.Enum.GameResultEnum;
 import com.boot.gugi.base.Enum.StadiumEnum;
 import com.boot.gugi.base.Enum.TeamEnum;
 import com.boot.gugi.base.dto.DiaryDTO;
+import com.boot.gugi.exception.PostErrorResult;
+import com.boot.gugi.exception.PostException;
 import com.boot.gugi.exception.UserErrorResult;
 import com.boot.gugi.exception.UserException;
 import com.boot.gugi.model.Diary;
@@ -42,6 +44,25 @@ public class DiaryService {
         updateUserStatistics(userId, gameResult, null, true);
         Diary savedDiary = createDiaryInfo(userId, postInfo, uploadedDiaryUrl, gameResult);
         diaryRepository.save(savedDiary);
+    }
+
+    @Transactional
+    public void updateDiaryPost(HttpServletRequest request, HttpServletResponse response, UUID diaryId, DiaryDTO.DiaryRequest postInfo, MultipartFile gameImg) {
+
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+        Diary existingDiary = diaryRepository.findByDiaryId(diaryId)
+                .orElseThrow(() -> new PostException(PostErrorResult.NOT_FOUND_DIARY));
+
+        if (!existingDiary.getUserId().equals(userId)) {
+            throw new PostException(PostErrorResult.UNAUTHORIZED_ACCESS);
+        }
+
+        String uploadedDiaryUrl = s3Service.uploadImg(gameImg, null);
+        GameResultEnum gameResult = determineGameResult(postInfo.getHomeScore(), postInfo.getAwayScore());
+
+        updateUserStatistics(userId, gameResult, existingDiary.getGameResult(), false);
+        existingDiary = updateDiaryInfo(existingDiary.getDiaryId(), existingDiary.getUserId(), postInfo, uploadedDiaryUrl, gameResult, existingDiary.getCreatedAt());
+        diaryRepository.save(existingDiary);
     }
 
     private GameResultEnum determineGameResult(Integer homeScore, Integer awayScore) {
@@ -113,6 +134,26 @@ public class DiaryService {
                 .gameImg(diaryImg)
                 .content(postInfo.getContent())
                 .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    private Diary updateDiaryInfo(UUID diaryId, UUID userId, DiaryDTO.DiaryRequest postInfo, String diaryImg, GameResultEnum gameResult, LocalDateTime createdAt) {
+        StadiumEnum stadium = StadiumEnum.fromString(postInfo.getGameStadium());
+        TeamEnum homeTeam = TeamEnum.fromString(postInfo.getHomeTeam());
+        TeamEnum awayTeam = TeamEnum.fromString(postInfo.getAwayTeam());
+        return Diary.builder()
+                .diaryId(diaryId)
+                .userId(userId)
+                .gameDate(postInfo.getGameDate())
+                .gameStadium(stadium)
+                .homeTeam(homeTeam)
+                .awayTeam(awayTeam)
+                .homeScore(postInfo.getHomeScore())
+                .awayScore(postInfo.getAwayScore())
+                .gameResult(gameResult)
+                .gameImg(diaryImg)
+                .content(postInfo.getContent())
+                .createdAt(createdAt)
                 .build();
     }
 }

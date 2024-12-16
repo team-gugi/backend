@@ -11,6 +11,7 @@ public enum SuccessStatus implements BaseCode {
 
     _OK(HttpStatus.OK, "200", "성공입니다."),
     _CREATED(HttpStatus.CREATED, "201", "생성에 성공했습니다."),
+    _UPDATED(HttpStatus.OK, "200", "수정에 성공했습니다."),
     _GET(HttpStatus.OK, "200", "데이터 조회에 성공했습니다.");
 
     private final HttpStatus httpStatus;
