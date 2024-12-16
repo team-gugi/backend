@@ -61,4 +61,12 @@ public class DiaryController {
 
         return ApiResponse.onSuccess(SuccessStatus._GET, diaryList);
     }
+
+    @GetMapping(value = "/win-rate")
+    public ResponseEntity<ApiResponse<DiaryDTO.WinRateResponse>> getMyWinRate(HttpServletRequest request, HttpServletResponse response) {
+
+        DiaryDTO.WinRateResponse myWinRate = diaryService.getMyWinRate(request, response);
+
+        return ApiResponse.onSuccess(SuccessStatus._GET, myWinRate);
+    }
 }

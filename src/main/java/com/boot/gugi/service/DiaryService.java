@@ -11,6 +11,7 @@ import com.boot.gugi.exception.UserException;
 import com.boot.gugi.model.Diary;
 import com.boot.gugi.model.User;
 import com.boot.gugi.repository.DiaryRepository;
+import com.boot.gugi.repository.UserOnboardingInfoRepository;
 import com.boot.gugi.repository.UserRepository;
 import com.boot.gugi.token.service.TokenServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,6 +36,7 @@ public class DiaryService {
     private final S3Service s3Service;
     private final DiaryRepository diaryRepository;
     private final UserRepository userRepository;
+    private final UserOnboardingInfoRepository userOnboardingInfoRepository;
     private final TokenServiceImpl tokenServiceImpl;
 
     @Transactional
@@ -89,6 +91,16 @@ public class DiaryService {
                         .thenComparing(Comparator.comparing(Diary::getCreatedAt).reversed()))
                 .map(this::convertToDiarySingleDto)
                 .collect(Collectors.toList());
+    }
+
+    public DiaryDTO.WinRateResponse getMyWinRate(HttpServletRequest request, HttpServletResponse response) {
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+
+        User existingUser = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new UserException(UserErrorResult.NOT_FOUND_USER));
+        String nickName = userOnboardingInfoRepository.findNickNameByUser(existingUser);
+
+        return convertToUserWinRateDto(existingUser, nickName);
     }
 
     private GameResultEnum determineGameResult(Integer homeScore, Integer awayScore) {
@@ -206,6 +218,15 @@ public class DiaryService {
                 diary.getHomeTeam().toKorean(),
                 diary.getAwayTeam().toKorean(),
                 diary.getGameResult().toEnglish()
+        );
+    }
+
+    private DiaryDTO.WinRateResponse convertToUserWinRateDto(User user, String nickName) {
+        return new DiaryDTO.WinRateResponse(
+                nickName,
+                user.getWinRate(),
+                user.getTotalDiaryCount(),
+                user.getTotalWins()
         );
     }
 }
