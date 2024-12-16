@@ -1,6 +1,6 @@
 package com.boot.gugi.model;
 
-public interface TeamName {
-    String toEnglish();
+public interface Translate {
+    Integer getId();
     String toKorean();
 }
