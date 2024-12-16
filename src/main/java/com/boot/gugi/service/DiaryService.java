@@ -1,0 +1,232 @@
+package com.boot.gugi.service;
+
+import com.boot.gugi.base.Enum.GameResultEnum;
+import com.boot.gugi.base.Enum.StadiumEnum;
+import com.boot.gugi.base.Enum.TeamEnum;
+import com.boot.gugi.base.dto.DiaryDTO;
+import com.boot.gugi.exception.PostErrorResult;
+import com.boot.gugi.exception.PostException;
+import com.boot.gugi.exception.UserErrorResult;
+import com.boot.gugi.exception.UserException;
+import com.boot.gugi.model.Diary;
+import com.boot.gugi.model.User;
+import com.boot.gugi.repository.DiaryRepository;
+import com.boot.gugi.repository.UserOnboardingInfoRepository;
+import com.boot.gugi.repository.UserRepository;
+import com.boot.gugi.token.service.TokenServiceImpl;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class DiaryService {
+
+    private final S3Service s3Service;
+    private final DiaryRepository diaryRepository;
+    private final UserRepository userRepository;
+    private final UserOnboardingInfoRepository userOnboardingInfoRepository;
+    private final TokenServiceImpl tokenServiceImpl;
+
+    @Transactional
+    public void createDiaryPost(HttpServletRequest request, HttpServletResponse response, DiaryDTO.DiaryRequest postInfo, MultipartFile gameImg) {
+
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+        String uploadedDiaryUrl = s3Service.uploadImg(gameImg, null);
+        GameResultEnum gameResult = determineGameResult(postInfo.getHomeScore(), postInfo.getAwayScore());
+
+        updateUserStatistics(userId, gameResult, null, true);
+        Diary savedDiary = createDiaryInfo(userId, postInfo, uploadedDiaryUrl, gameResult);
+        diaryRepository.save(savedDiary);
+    }
+
+    @Transactional
+    public void updateDiaryPost(HttpServletRequest request, HttpServletResponse response, UUID diaryId, DiaryDTO.DiaryRequest postInfo, MultipartFile gameImg) {
+
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+        Diary existingDiary = diaryRepository.findByDiaryId(diaryId)
+                .orElseThrow(() -> new PostException(PostErrorResult.NOT_FOUND_DIARY));
+
+        if (!existingDiary.getUserId().equals(userId)) {
+            throw new PostException(PostErrorResult.UNAUTHORIZED_ACCESS);
+        }
+
+        String uploadedDiaryUrl = s3Service.uploadImg(gameImg, null);
+        GameResultEnum gameResult = determineGameResult(postInfo.getHomeScore(), postInfo.getAwayScore());
+
+        updateUserStatistics(userId, gameResult, existingDiary.getGameResult(), false);
+        existingDiary = updateDiaryInfo(existingDiary.getDiaryId(), existingDiary.getUserId(), postInfo, uploadedDiaryUrl, gameResult, existingDiary.getCreatedAt());
+        diaryRepository.save(existingDiary);
+    }
+
+    public DiaryDTO.DiaryDetailDto getDiaryDetails(HttpServletRequest request, HttpServletResponse response, UUID diaryId){
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+        Diary existingDiary = diaryRepository.findByDiaryId(diaryId)
+                .orElseThrow(() -> new PostException(PostErrorResult.NOT_FOUND_DIARY));
+
+        if (!existingDiary.getUserId().equals(userId)) {
+            throw new PostException(PostErrorResult.UNAUTHORIZED_ACCESS);
+        }
+
+        return convertToDiaryDetailDto(existingDiary);
+    }
+
+    public List<DiaryDTO.DiarySingleDto> getAllDiary(HttpServletRequest request, HttpServletResponse response){
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+        List<Diary> diaries = diaryRepository.findByUserId(userId);
+
+        return diaries.stream()
+                .sorted(Comparator.comparing(Diary::getGameDate).reversed()
+                        .thenComparing(Comparator.comparing(Diary::getCreatedAt).reversed()))
+                .map(this::convertToDiarySingleDto)
+                .collect(Collectors.toList());
+    }
+
+    public DiaryDTO.WinRateResponse getMyWinRate(HttpServletRequest request, HttpServletResponse response) {
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+
+        User existingUser = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new UserException(UserErrorResult.NOT_FOUND_USER));
+        String nickName = userOnboardingInfoRepository.findNickNameByUser(existingUser);
+
+        return convertToUserWinRateDto(existingUser, nickName);
+    }
+
+    private GameResultEnum determineGameResult(Integer homeScore, Integer awayScore) {
+        if (homeScore > awayScore) {
+            return GameResultEnum.WIN;
+        } else if (homeScore < awayScore) {
+            return GameResultEnum.LOSE;
+        } else {
+            return GameResultEnum.DRAW;
+        }
+    }
+
+    private void updateUserStatistics(UUID userId, GameResultEnum newGameResult, GameResultEnum oldGameResult, boolean isCreate) {
+        User user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new UserException(UserErrorResult.NOT_FOUND_USER));
+
+        if (isCreate) {
+            updateStatisticsForCreation(user, newGameResult);
+        } else {
+            updateStatisticsForUpdate(user, newGameResult, oldGameResult);
+        }
+
+        user.setWinRate(calculateWinningPercent(user.getTotalWins(), user.getTotalDiaryCount()));
+        userRepository.save(user);
+    }
+
+    private void updateStatisticsForCreation(User user, GameResultEnum newGameResult) {
+        user.setTotalDiaryCount(user.getTotalDiaryCount() + 1);
+        if (newGameResult == GameResultEnum.WIN) {
+            user.setTotalWins(user.getTotalWins() + 1);
+        }
+    }
+
+    private void updateStatisticsForUpdate(User user, GameResultEnum newGameResult, GameResultEnum oldGameResult) {
+        if (oldGameResult == GameResultEnum.WIN) {
+            if (newGameResult == GameResultEnum.LOSE || newGameResult == GameResultEnum.DRAW) {
+                user.setTotalWins(user.getTotalWins() - 1);
+            }
+        } else {
+            if (newGameResult == GameResultEnum.WIN) {
+                user.setTotalWins(user.getTotalWins() + 1);
+            }
+        }
+    }
+
+    private BigDecimal calculateWinningPercent(Integer totalWins, Integer totalDiaryCount) {
+        if (totalDiaryCount > 0) {
+            return BigDecimal.valueOf(totalWins)
+                    .divide(BigDecimal.valueOf(totalDiaryCount), 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100));
+        } else {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private Diary createDiaryInfo(UUID userId, DiaryDTO.DiaryRequest postInfo, String diaryImg, GameResultEnum gameResult) {
+        StadiumEnum stadium = StadiumEnum.fromString(postInfo.getGameStadium());
+        TeamEnum homeTeam = TeamEnum.fromString(postInfo.getHomeTeam());
+        TeamEnum awayTeam = TeamEnum.fromString(postInfo.getAwayTeam());
+        return Diary.builder()
+                .userId(userId)
+                .gameDate(postInfo.getGameDate())
+                .gameStadium(stadium)
+                .homeTeam(homeTeam)
+                .awayTeam(awayTeam)
+                .homeScore(postInfo.getHomeScore())
+                .awayScore(postInfo.getAwayScore())
+                .gameResult(gameResult)
+                .gameImg(diaryImg)
+                .content(postInfo.getContent())
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    private Diary updateDiaryInfo(UUID diaryId, UUID userId, DiaryDTO.DiaryRequest postInfo, String diaryImg, GameResultEnum gameResult, LocalDateTime createdAt) {
+        StadiumEnum stadium = StadiumEnum.fromString(postInfo.getGameStadium());
+        TeamEnum homeTeam = TeamEnum.fromString(postInfo.getHomeTeam());
+        TeamEnum awayTeam = TeamEnum.fromString(postInfo.getAwayTeam());
+        return Diary.builder()
+                .diaryId(diaryId)
+                .userId(userId)
+                .gameDate(postInfo.getGameDate())
+                .gameStadium(stadium)
+                .homeTeam(homeTeam)
+                .awayTeam(awayTeam)
+                .homeScore(postInfo.getHomeScore())
+                .awayScore(postInfo.getAwayScore())
+                .gameResult(gameResult)
+                .gameImg(diaryImg)
+                .content(postInfo.getContent())
+                .createdAt(createdAt)
+                .build();
+    }
+
+    private DiaryDTO.DiaryDetailDto convertToDiaryDetailDto(Diary diary) {
+        return new DiaryDTO.DiaryDetailDto(
+                diary.getDiaryId(),
+                diary.getGameDate(),
+                diary.getGameStadium().toKorean(),
+                diary.getHomeTeam().toKorean(),
+                diary.getAwayTeam().toKorean(),
+                diary.getHomeScore(),
+                diary.getAwayScore(),
+                diary.getGameImg(),
+                diary.getContent(),
+                diary.getGameResult().toEnglish()
+        );
+    }
+
+    private DiaryDTO.DiarySingleDto convertToDiarySingleDto(Diary diary) {
+        return new DiaryDTO.DiarySingleDto(
+                diary.getDiaryId(),
+                diary.getGameDate(),
+                diary.getGameStadium().toKorean(),
+                diary.getHomeTeam().toKorean(),
+                diary.getAwayTeam().toKorean(),
+                diary.getGameResult().toEnglish()
+        );
+    }
+
+    private DiaryDTO.WinRateResponse convertToUserWinRateDto(User user, String nickName) {
+        return new DiaryDTO.WinRateResponse(
+                nickName,
+                user.getWinRate(),
+                user.getTotalDiaryCount(),
+                user.getTotalWins()
+        );
+    }
+}

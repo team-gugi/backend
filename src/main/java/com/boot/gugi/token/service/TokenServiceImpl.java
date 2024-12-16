@@ -31,7 +31,7 @@ public class TokenServiceImpl implements TokenService {
     private final CookieUtil cookieUtil;
 
     @Override
-    public void reissueAccessToken(HttpServletRequest request, HttpServletResponse response) {
+    public String reissueAccessToken(HttpServletRequest request, HttpServletResponse response) {
         Cookie cookie = cookieUtil.getRefreshCookie(request);
         String refreshToken = cookie.getValue();
 
@@ -39,12 +39,24 @@ public class TokenServiceImpl implements TokenService {
         RefreshToken existRefreshToken = refreshTokenRepository.findByUserId(userId)
                 .orElseThrow(() -> new TokenException(TokenErrorResult.REFRESH_TOKEN_NOT_FOUND));
 
-        String newAccessToken;
         if (!existRefreshToken.getRefreshToken().equals(refreshToken) || jwtUtil.isTokenExpired(refreshToken)) {
             throw new TokenException(TokenErrorResult.INVALID_REFRESH_TOKEN);
         }
 
         ResponseCookie newAccessCookie = cookieUtil.createAccessCookie(userId, ACCESS_TOKEN_EXPIRATION_TIME);
         response.addHeader("Set-Cookie", newAccessCookie.toString());
+
+        return newAccessCookie.getValue();
+    }
+
+    @Override
+    public UUID getUserIdFromAccessToken(HttpServletRequest request, HttpServletResponse response) {
+        Cookie cookie = cookieUtil.getAccessCookie(request);
+        String accessToken = (cookie != null) ? cookie.getValue() : null;
+
+        if (accessToken == null || jwtUtil.isTokenExpired(accessToken)) {
+            accessToken = reissueAccessToken(request, response);
+        }
+        return UUID.fromString(jwtUtil.getUserIdFromToken(accessToken));
     }
 }

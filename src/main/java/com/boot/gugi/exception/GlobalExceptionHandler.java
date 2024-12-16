@@ -1,9 +1,9 @@
-package com.boot.gugi.token.exception;
+package com.boot.gugi.exception;
 
 import com.boot.gugi.base.ApiResponse;
 import com.boot.gugi.base.status.BaseErrorCode;
-import com.boot.gugi.exception.UserErrorResult;
-import com.boot.gugi.exception.UserException;
+import com.boot.gugi.token.exception.TokenErrorResult;
+import com.boot.gugi.token.exception.TokenException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -64,5 +64,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<String> handleMissingHeaderException(MissingRequestHeaderException ex) {
         String errorMessage = "Required header '" + ex.getHeaderName() + "' is missing";
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorMessage);
+    }
+    // Post
+    @ExceptionHandler(PostException.class)
+    public ResponseEntity<ApiResponse<BaseErrorCode>> handlePostException(PostException e) {
+        PostErrorResult errorResult = e.getPostErrorResult();
+        return ApiResponse.onFailure(errorResult);
     }
 }
