@@ -4,9 +4,11 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.GenericGenerator;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
+@Setter
 @Entity
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -38,4 +40,7 @@ public class User {
     @Column(nullable=false)
     private Integer age;
 
+    private BigDecimal winRate;
+    private Integer totalDiaryCount;
+    private Integer totalWins;
 }
