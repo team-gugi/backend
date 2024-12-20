@@ -40,7 +40,12 @@ public class User {
     @Column(nullable=false)
     private Integer age;
 
-    private BigDecimal winRate;
-    private Integer totalDiaryCount;
-    private Integer totalWins;
+    @Builder.Default
+    private BigDecimal winRate = BigDecimal.ZERO;
+
+    @Builder.Default
+    private Integer totalDiaryCount = 0;
+
+    @Builder.Default
+    private Integer totalWins = 0;
 }
