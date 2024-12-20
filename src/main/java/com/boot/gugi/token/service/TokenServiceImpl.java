@@ -10,6 +10,8 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,8 @@ public class TokenServiceImpl implements TokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
+
+    private static final Logger logger = LoggerFactory.getLogger(TokenServiceImpl.class);
 
     @Override
     public String reissueAccessToken(HttpServletRequest request, HttpServletResponse response) {
@@ -57,6 +61,9 @@ public class TokenServiceImpl implements TokenService {
         if (accessToken == null || jwtUtil.isTokenExpired(accessToken)) {
             accessToken = reissueAccessToken(request, response);
         }
-        return UUID.fromString(jwtUtil.getUserIdFromToken(accessToken));
+
+        UUID userId = UUID.fromString(jwtUtil.getUserIdFromToken(accessToken));
+        logger.info("Extracted userId: {}", userId);
+        return userId;
     }
 }
