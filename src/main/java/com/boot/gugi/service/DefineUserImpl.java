@@ -14,6 +14,8 @@ import com.boot.gugi.token.util.CookieUtil;
 import com.boot.gugi.token.util.JwtUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,8 @@ public class DefineUserImpl implements UserService {
     private final UserRepository userRepository;
     private final UserOnboardingInfoRepository userOnboardingInfoRepository;
     private final S3Service s3Service;
+
+    private static final Logger logger = LoggerFactory.getLogger(DefineUserImpl.class);
 
     @Value("${jwt.access-token.expiration-time}")
     private long ACCESS_TOKEN_EXPIRATION_TIME;
@@ -69,7 +73,7 @@ public class DefineUserImpl implements UserService {
                 .build();
         userRepository.save(user);
 
-        String uploadedImageUrl = uploadProfileImage(profileImg);
+        String uploadedImageUrl = s3Service.uploadImg(profileImg,DEFAULT_USER_IMAGE);
 
         UserOnboardingInfo onboardingInfo = UserOnboardingInfo.builder()
                 .user(user)
@@ -89,23 +93,28 @@ public class DefineUserImpl implements UserService {
         ResponseCookie accessCookie = cookieUtil.createAccessCookie(user.getUserId(), ACCESS_TOKEN_EXPIRATION_TIME);
         response.addHeader("Set-Cookie", accessCookie.toString());
 
+        logger.info("userId : {}", user.getUserId());
+        logger.info("user-name : {}", user.getName());
+        logger.info("user-email : {}", user.getEmail());
+        logger.info("access-token : {}", accessCookie.toString());
+        logger.info("refresh-token : {}", refreshCookie.toString());
 
-        return new OnboardingInfoDTO.DefineUserResponse(onboardingInfo.getNickName(), onboardingInfo.getIntroduction(), onboardingInfo.getTeam(), onboardingInfo.getProfileImg());
+        String accessToken = extractAccessToken(accessCookie.toString());
+        String refreshToken = extractAccessToken(refreshCookie.toString());
 
+        return new OnboardingInfoDTO.DefineUserResponse(onboardingInfo.getNickName(), onboardingInfo.getIntroduction(), onboardingInfo.getTeam(), onboardingInfo.getProfileImg(), accessToken, refreshToken);
     }
 
-    private String uploadProfileImage(MultipartFile profileImg) {
-        if (profileImg != null && !profileImg.isEmpty()) {
-            try {
-                String fileName = UUID.randomUUID().toString() + "_" + profileImg.getOriginalFilename();
-                return s3Service.uploadFile(profileImg.getInputStream(), fileName);
-            } catch (IOException e) {
-                throw new RuntimeException("프로필 이미지 업로드 실패: " + e.getMessage(), e);
-            } catch (AmazonServiceException e) {
-                throw new RuntimeException("S3 서비스 오류: " + e.getMessage(), e);
+    private String extractAccessToken(String cookieString) {
+        String[] cookies = cookieString.split(";");
+        for (String cookie : cookies) {
+            if (cookie.trim().startsWith("access_token=")) {
+                return cookie.substring("access_token=".length()).trim();
             }
-        } else {
-            return DEFAULT_USER_IMAGE;
+            else if (cookie.trim().startsWith("refresh_token=")) {
+                return cookie.substring("refresh_token=".length()).trim();
+            }
         }
+        return null;
     }
 }
