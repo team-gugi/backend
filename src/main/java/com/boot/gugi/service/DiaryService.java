@@ -1,8 +1,6 @@
 package com.boot.gugi.service;
 
-import com.boot.gugi.base.Enum.GameResultEnum;
-import com.boot.gugi.base.Enum.StadiumEnum;
-import com.boot.gugi.base.Enum.TeamEnum;
+import com.boot.gugi.base.Enum.*;
 import com.boot.gugi.base.dto.DiaryDTO;
 import com.boot.gugi.exception.PostErrorResult;
 import com.boot.gugi.exception.PostException;
@@ -66,7 +64,7 @@ public class DiaryService {
         GameResultEnum gameResult = determineGameResult(postInfo.getHomeScore(), postInfo.getAwayScore());
 
         updateUserStatistics(userId, gameResult, existingDiary.getGameResult(), false);
-        existingDiary = updateDiaryInfo(existingDiary.getDiaryId(), existingDiary.getUserId(), postInfo, uploadedDiaryUrl, gameResult, existingDiary.getCreatedAt());
+        updateDiaryInfo(existingDiary, postInfo, uploadedDiaryUrl, gameResult);
         diaryRepository.save(existingDiary);
     }
 
@@ -175,24 +173,21 @@ public class DiaryService {
                 .build();
     }
 
-    private Diary updateDiaryInfo(UUID diaryId, UUID userId, DiaryDTO.DiaryRequest postInfo, String diaryImg, GameResultEnum gameResult, LocalDateTime createdAt) {
+    private void updateDiaryInfo(Diary existingDiary, DiaryDTO.DiaryRequest postInfo, String diaryImg, GameResultEnum gameResult) {
         StadiumEnum stadium = StadiumEnum.fromString(postInfo.getGameStadium());
         TeamEnum homeTeam = TeamEnum.fromString(postInfo.getHomeTeam());
         TeamEnum awayTeam = TeamEnum.fromString(postInfo.getAwayTeam());
-        return Diary.builder()
-                .diaryId(diaryId)
-                .userId(userId)
-                .gameDate(postInfo.getGameDate())
-                .gameStadium(stadium)
-                .homeTeam(homeTeam)
-                .awayTeam(awayTeam)
-                .homeScore(postInfo.getHomeScore())
-                .awayScore(postInfo.getAwayScore())
-                .gameResult(gameResult)
-                .gameImg(diaryImg)
-                .content(postInfo.getContent())
-                .createdAt(createdAt)
-                .build();
+
+        existingDiary.setGameDate(postInfo.getGameDate());
+        existingDiary.setGameStadium(stadium);
+        existingDiary.setHomeTeam(homeTeam);
+        existingDiary.setAwayTeam(awayTeam);
+        existingDiary.setHomeScore(postInfo.getHomeScore());
+        existingDiary.setAwayScore(postInfo.getAwayScore());
+        existingDiary.setGameResult(gameResult);
+        existingDiary.setGameImg(diaryImg);
+        existingDiary.setContent(postInfo.getContent());
+        existingDiary.setUpdatedAt(LocalDateTime.now());
     }
 
     private DiaryDTO.DiaryDetailDto convertToDiaryDetailDto(Diary diary) {
