@@ -8,10 +8,13 @@ import com.boot.gugi.service.MateService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -36,5 +39,13 @@ public class MateController {
         mateService.updateMatePost(request, response, mateId, matePostDetails);
 
         return ApiResponse.onSuccess(SuccessStatus._UPDATED);
+    }
+
+    @GetMapping(value = "/latest")
+    public ResponseEntity<ApiResponse<List<MateDTO.MateResponse>>> getMatePostsSortedByDate(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime  cursor) {
+        List<MateDTO.MateResponse> matePostList = mateService.getAllPostsSortedByDate(cursor);
+
+        return ApiResponse.onSuccess(SuccessStatus._GET, matePostList);
     }
 }

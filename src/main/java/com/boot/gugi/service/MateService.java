@@ -17,10 +17,14 @@ import com.boot.gugi.token.service.TokenServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -95,5 +99,41 @@ public class MateService {
         existingMatePost.setMember(matePostDetails.getOptions().getMember());
         existingMatePost.setGameStadium(stadium);
         existingMatePost.setUpdatedAt(LocalDateTime.now());
+    }
+
+    public List<MateDTO.MateResponse> getAllPostsSortedByDate(LocalDateTime cursor) {
+
+        Pageable pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        List<MatePost> posts;
+
+        if (cursor == null) {
+            posts = matePostRepository.findFirst5ByOrderByUpdatedAtDesc(pageable);
+        } else {
+            posts = matePostRepository.findByUpdatedAtLessThan(cursor, pageable);
+        }
+
+        return posts.stream()
+                .map(this::convertToDto)
+                .toList();
+    }
+
+    private MateDTO.MateResponse convertToDto(MatePost post) {
+        return new MateDTO.MateResponse(
+                post.getMateId(),
+                post.getTitle(),
+                post.getContent(),
+                post.getDaysSinceWritten(),
+                post.getDaysUntilGame(),
+                post.getConfirmedMembers(),
+                post.getUpdatedAt(),
+                new MateDTO.MateOption(
+                        post.getGender().toKorean(),
+                        post.getAge().toKorean(),
+                        post.getGameDate(),
+                        post.getHomeTeam().toKorean(),
+                        post.getMember(),
+                        post.getGameStadium().toKorean()
+                )
+        );
     }
 }
