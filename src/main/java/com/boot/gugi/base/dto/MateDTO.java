@@ -17,13 +17,13 @@ public class MateDTO {
         private String title;
         private String content;
         private String contact;
-        private MateOption options;
+        private RequestOption options;
     }
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class MateOption {
+    public static class RequestOption {
         private String gender;
         private String age;
         private LocalDate date;
@@ -35,7 +35,7 @@ public class MateDTO {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class MateResponse {
+    public static class ResponseByDate {
         private UUID mateId;
         private String title;
         private String content;
@@ -43,6 +43,32 @@ public class MateDTO {
         private Integer daysUntilGame;
         private Integer confirmedMembers;
         private LocalDateTime updatedAt;
-        private MateOption options;
+        private ResponseOption options;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ResponseByRelevance {
+        private UUID mateId;
+        private String title;
+        private String content;
+        private Integer daysSinceWritten;
+        private Integer daysUntilGame;
+        private Integer confirmedMembers;
+        private String nextCursor;
+        private ResponseOption options;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ResponseOption {
+        private String gender;
+        private String age;
+        private String date;
+        private String team;
+        private Integer member;
+        private String stadium;
     }
 }
