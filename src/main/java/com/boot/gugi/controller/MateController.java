@@ -3,10 +3,12 @@ package com.boot.gugi.controller;
 import com.boot.gugi.base.ApiResponse;
 import com.boot.gugi.base.dto.MateDTO;
 import com.boot.gugi.base.status.SuccessStatus;
+import com.boot.gugi.model.MateRequest;
 import com.boot.gugi.model.MatePost;
 import com.boot.gugi.service.MateService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -68,5 +70,14 @@ public class MateController {
         List<MateDTO.ResponseByRelevance> matePostList = mateService.getAllPostsSortedByRelevance(cursor, matePostOptions);
 
         return ApiResponse.onSuccess(SuccessStatus._GET, matePostList);
+    }
+
+    @PostMapping(value = "/{mateId}/apply")
+    public ResponseEntity<ApiResponse<MateRequest>> applyToMatePost(HttpServletRequest request, HttpServletResponse response,
+                                                                    @Valid @PathVariable UUID mateId) {
+
+        mateService.applyToMatePost(request, response, mateId);
+
+        return ApiResponse.onSuccess(SuccessStatus._APPLY);
     }
 }

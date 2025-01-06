@@ -1,17 +1,16 @@
 package com.boot.gugi.service;
 
-import com.boot.gugi.base.Enum.AgeRangeEnum;
-import com.boot.gugi.base.Enum.GenderEnum;
-import com.boot.gugi.base.Enum.StadiumEnum;
-import com.boot.gugi.base.Enum.TeamEnum;
+import com.boot.gugi.base.Enum.*;
 import com.boot.gugi.base.dto.MateDTO;
 import com.boot.gugi.exception.PostErrorResult;
 import com.boot.gugi.exception.PostException;
 import com.boot.gugi.exception.UserErrorResult;
 import com.boot.gugi.exception.UserException;
 import com.boot.gugi.model.MatePost;
+import com.boot.gugi.model.MateRequest;
 import com.boot.gugi.model.QMatePost;
 import com.boot.gugi.model.User;
+import com.boot.gugi.repository.MateRequestRepository;
 import com.boot.gugi.repository.MatePostRepository;
 import com.boot.gugi.repository.UserRepository;
 import com.boot.gugi.token.service.TokenServiceImpl;
@@ -38,13 +37,12 @@ public class MateService {
     private final TokenServiceImpl tokenServiceImpl;
     private final UserRepository userRepository;
     private final MatePostRepository matePostRepository;
+    private final MateRequestRepository mateRequestRepository;
     private final JPAQueryFactory queryFactory;
 
     @Transactional
     public void createMatePost(HttpServletRequest request, HttpServletResponse response, MateDTO.MateRequest matePostDetails) {
-        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
-        User writer = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new UserException(UserErrorResult.NOT_FOUND_USER));
+        User writer = validateUser(request, response);
 
         MatePost savedMate = createMateInfo(writer, matePostDetails);
         matePostRepository.save(savedMate);
@@ -52,12 +50,8 @@ public class MateService {
 
     @Transactional
     public void updateMatePost(HttpServletRequest request, HttpServletResponse response, UUID mateId, MateDTO.MateRequest matePostDetails) {
-        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
-        User writer = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new UserException(UserErrorResult.NOT_FOUND_USER));
-
-        MatePost existingMatePost = matePostRepository.findById(mateId)
-                .orElseThrow(() -> new PostException(PostErrorResult.NOT_FOUND_MATE_POST));
+        User writer = validateUser(request, response);
+        MatePost existingMatePost = getMatePostById(mateId);
 
         if (!existingMatePost.getUser().getUserId().equals(writer.getUserId())) {
             throw new PostException(PostErrorResult.UNAUTHORIZED_ACCESS);
@@ -65,6 +59,17 @@ public class MateService {
 
         updateMatePostInfo(existingMatePost, matePostDetails);
         matePostRepository.save(existingMatePost);
+    }
+
+    private User validateUser(HttpServletRequest request, HttpServletResponse response) {
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+        return userRepository.findByUserId(userId)
+                .orElseThrow(() -> new UserException(UserErrorResult.NOT_FOUND_USER));
+    }
+
+    private MatePost getMatePostById(UUID postId) {
+        return matePostRepository.findById(postId)
+                .orElseThrow(() -> new PostException(PostErrorResult.NOT_FOUND_MATE_POST));
     }
 
     private MatePost createMateInfo(User user, MateDTO.MateRequest matePostDetails) {
@@ -265,5 +270,32 @@ public class MateService {
                         post.getGameStadium().toKorean()
                 )
         );
+    }
+
+    @Transactional
+    public void applyToMatePost(HttpServletRequest request, HttpServletResponse response, UUID mateId){
+        User applicant = validateUser(request, response);
+        MatePost existingMatePost = getMatePostById(mateId);
+
+        if (existingMatePost.getUser().getUserId().equals(applicant.getUserId())) {
+            throw new PostException(PostErrorResult.FORBIDDEN_OWN_POST);
+        }
+
+        boolean alreadyApplied = mateRequestRepository.existsByApplicantAndMatePost(applicant, existingMatePost);
+        if (alreadyApplied) {
+            throw new PostException(PostErrorResult.ALREADY_APPLIED);
+        }
+
+        MateRequest savedRequest = registerRequest(applicant, existingMatePost);
+        mateRequestRepository.save(savedRequest);
+    }
+
+    private MateRequest registerRequest(User applicant, MatePost matePost) {
+        return MateRequest.builder()
+                .applicant(applicant)
+                .matePost(matePost)
+                .status(ApplicationStatusEnum.PENDING)
+                .appliedAt(LocalDateTime.now())
+                .build();
     }
 }

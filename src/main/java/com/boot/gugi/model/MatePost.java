@@ -78,7 +78,7 @@ public class MatePost {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "matePost", cascade = CascadeType.ALL)
-    private List<MatchRequest> matchRequests;
+    private List<MateRequest> mateRequestList;
 
     public Integer getDaysSinceWritten() {
         return (int) ChronoUnit.DAYS.between(updatedAt.toLocalDate(), LocalDateTime.now().toLocalDate());
