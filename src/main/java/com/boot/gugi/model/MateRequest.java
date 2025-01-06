@@ -1,12 +1,13 @@
 package com.boot.gugi.model;
 
-import com.boot.gugi.base.Enum.MatchStatusEnum;
+import com.boot.gugi.base.Enum.ApplicationStatusEnum;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Data
@@ -14,8 +15,8 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Table(name = "match_requests")
-public class MatchRequest {
+@Table(name = "mate_request")
+public class MateRequest {
 
     @Id
     @GeneratedValue(generator = "request_uuid")
@@ -28,13 +29,17 @@ public class MatchRequest {
     private MatePost matePost;
 
     @ManyToOne
-    @JoinColumn(name = "requester_id")
-    private User requester;
+    @JoinColumn(name = "applicant_id")
+    private User applicant;
 
     @Enumerated(EnumType.STRING)
-    private MatchStatusEnum status;
+    private ApplicationStatusEnum status;
 
     @CreatedDate
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    @Column(name = "applied_at")
+    private LocalDateTime appliedAt;
+
+    public Integer getDaysSinceWritten() {
+        return (int) ChronoUnit.DAYS.between(appliedAt.toLocalDate(), LocalDateTime.now().toLocalDate());
+    }
 }
