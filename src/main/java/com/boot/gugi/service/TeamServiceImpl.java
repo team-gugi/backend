@@ -42,7 +42,7 @@ public class TeamServiceImpl implements MainService{
         isDbUpdated = false;
     }
 
-    @Scheduled(cron = "0 */1 1-23 * * 2-7")
+    @Scheduled(cron = "0 */1 15-23 * * 2-7")
     public void checkAndUpdateGameData() {
         if (!isDbUpdated) {
             List<TeamDTO.RankRequest> newScrapedData = scrapeRank();

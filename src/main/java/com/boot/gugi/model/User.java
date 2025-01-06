@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.GenericGenerator;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -48,4 +49,7 @@ public class User {
 
     @Builder.Default
     private Integer totalWins = 0;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<MatePost> matePosts;
 }

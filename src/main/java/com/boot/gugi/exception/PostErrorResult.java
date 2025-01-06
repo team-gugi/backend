@@ -9,8 +9,11 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum PostErrorResult implements BaseErrorCode {
-    NOT_FOUND_DIARY(HttpStatus.NOT_FOUND, "404", "존재하지 않는 포스트입니다."),
-    UNAUTHORIZED_ACCESS(HttpStatus.FORBIDDEN, "403", "사용자가 이 포스트에 접근할 수 없습니다.");
+    NOT_FOUND_DIARY(HttpStatus.NOT_FOUND, "404", "해당 직관일기 글이 존재하지 않습니다."),
+    NOT_FOUND_MATE_POST(HttpStatus.NOT_FOUND, "404", "해당 직관메이트 글이 존재하지 않습니다."),
+    UNAUTHORIZED_ACCESS(HttpStatus.FORBIDDEN, "403", "사용자가 해당 포스트에 접근권한이 없습니다."),
+    FORBIDDEN_OWN_POST(HttpStatus.FORBIDDEN, "403", "본인의 게시글에는 요청할 수 없습니다."),
+    ALREADY_APPLIED(HttpStatus.CONFLICT,"409", "이미 신청한 게시물입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
