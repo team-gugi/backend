@@ -11,7 +11,8 @@ import org.springframework.http.HttpStatus;
 public enum UserSuccessResult implements BaseCode {
     CREATED_DEFINE_USER(HttpStatus.CREATED, "201", "유저 등록에 성공했습니다."),
     GET_DEFINE_USER(HttpStatus.OK, "200", "유저 조회에 성공했습니다."),
-    MODIFY_DEFINE_USER(HttpStatus.OK, "200", "유저정보 수정에 성공했습니다.");
+    MODIFY_DEFINE_USER(HttpStatus.OK, "200", "유저정보 수정에 성공했습니다."),
+    UPDATE_MATE_REQUEST(HttpStatus.OK, "200", "신청 상태를 성공적으로 업데이트했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
