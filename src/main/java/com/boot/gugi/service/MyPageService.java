@@ -5,6 +5,7 @@ import com.boot.gugi.exception.PostErrorResult;
 import com.boot.gugi.exception.PostException;
 import com.boot.gugi.exception.UserErrorResult;
 import com.boot.gugi.exception.UserException;
+import com.boot.gugi.model.MatePost;
 import com.boot.gugi.model.MateRequest;
 import com.boot.gugi.model.User;
 import com.boot.gugi.repository.MateRequestRepository;
@@ -40,6 +41,18 @@ public class MyPageService {
         }
         if (mateRequest.getStatus() != ApplicationStatusEnum.PENDING) {
             throw new PostException(PostErrorResult.ALREADY_RESPONDED);
+        }
+
+        ApplicationStatusEnum newStatus = ApplicationStatusEnum.fromKorean(status);
+        if (newStatus == ApplicationStatusEnum.ACCEPTED) {
+            MatePost matePost = mateRequest.getMatePost();
+            Integer confirmedMembers = matePost.getConfirmedMembers();
+            Integer totalMembers = matePost.getMember();
+
+            if (confirmedMembers >= totalMembers) {
+                throw new PostException(PostErrorResult.MAX_MEMBERS_REACHED);
+            }
+            matePost.setConfirmedMembers(confirmedMembers + 1);
         }
 
         mateRequest.setStatus(ApplicationStatusEnum.fromKorean(status));
