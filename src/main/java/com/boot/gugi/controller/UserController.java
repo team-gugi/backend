@@ -1,6 +1,8 @@
 package com.boot.gugi.controller;
 
+import com.boot.gugi.base.dto.MatePostStatusDTO;
 import com.boot.gugi.base.dto.OnboardingInfoDTO;
+import com.boot.gugi.base.status.SuccessStatus;
 import com.boot.gugi.exception.UserSuccessResult;
 import com.boot.gugi.model.MateRequest;
 import com.boot.gugi.service.MyPageService;
@@ -45,5 +47,13 @@ public class UserController {
         myPageService.respondToMateRequest(request, response, requestId, status);
 
         return ApiResponse.onSuccess(UserSuccessResult.UPDATE_MATE_REQUEST);
+    }
+
+    @GetMapping(value = "/notifications/all")
+    public ResponseEntity<ApiResponse<MatePostStatusDTO.MateRequestSummaryDTO>> getMatePostStatus(HttpServletRequest request, HttpServletResponse response) {
+
+        MatePostStatusDTO.MateRequestSummaryDTO  mateRequestStatusList = myPageService.getMateRequestSummary(request, response);
+
+        return ApiResponse.onSuccess(SuccessStatus._GET, mateRequestStatusList);
     }
 }
