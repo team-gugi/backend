@@ -43,8 +43,17 @@ public class UserController {
     @GetMapping(value = "/info")
     public ResponseEntity<ApiResponse<UserDTO.UserResponse>> getUserInfo(HttpServletRequest request, HttpServletResponse response) {
 
-        UserDTO.UserResponse user = userService.getCurrentUser(request, response);
+        UserDTO.UserResponse user = userService.getUser(request, response);
         return ApiResponse.onSuccess(UserSuccessStatus.GET_USER, user);
+    }
+
+    @PutMapping(value = "/info", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<UserDTO.UserResponse>> updateUserInfo(HttpServletRequest request, HttpServletResponse response,
+                                                                            @RequestPart("UserDTO") @Valid UserDTO.UserRequest userDTO,
+                                                                            @RequestPart(value = "profileImg", required = false) MultipartFile profileImg) {
+
+        UserDTO.UserResponse updatedUser = userService.updateUser(request, response, userDTO, profileImg);
+        return ApiResponse.onSuccess(UserSuccessStatus.UPDATE_USER, updatedUser);
     }
 
     @PostMapping(value = "/mate-requests/{requestId}/status")

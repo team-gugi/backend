@@ -121,16 +121,30 @@ public class UserService {
         return null;
     }
 
-    public UserDTO.UserResponse getCurrentUser(HttpServletRequest request, HttpServletResponse response) {
-        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
-        User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new UserException(UserErrorResult.NOT_FOUND_USER));
+    public UserDTO.UserResponse getUser(HttpServletRequest request, HttpServletResponse response) {
+        User user = validateUser(request, response);
 
-        return convertToUserDTO(user);
+        UserOnboardingInfo userDetails = userOnboardingInfoRepository.findByUser(user);
+        return convertToUserDTO(userDetails);
     }
 
-    private UserDTO.UserResponse convertToUserDTO(User user) {
-        UserOnboardingInfo userDetails = userOnboardingInfoRepository.findByUser(user);
+    public UserDTO.UserResponse updateUser(HttpServletRequest request, HttpServletResponse response,
+                                           UserDTO.UserRequest userDTO, MultipartFile profileImg) {
+        User user = validateUser(request, response);
+        String uploadedImageUrl = s3Service.uploadImg(profileImg,DEFAULT_USER_IMAGE);
+
+        UserOnboardingInfo updatedUser = updateUserDTO(user, userDTO, uploadedImageUrl);
+        userOnboardingInfoRepository.save(updatedUser);
+        return convertToUserDTO(updatedUser);
+    }
+
+    private User validateUser(HttpServletRequest request, HttpServletResponse response) {
+        UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
+        return userRepository.findByUserId(userId)
+                .orElseThrow(() -> new UserException(UserErrorResult.NOT_FOUND_USER));
+    }
+
+    private UserDTO.UserResponse convertToUserDTO(UserOnboardingInfo userDetails) {
         return new UserDTO.UserResponse(
                 userDetails.getNickName(),
                 userDetails.getProfileImg(),
@@ -138,5 +152,16 @@ public class UserService {
                 userDetails.getIntroduction()
 
         );
+    }
+
+    private UserOnboardingInfo updateUserDTO(User user, UserDTO.UserRequest userDTO, String newProfileImg) {
+        UserOnboardingInfo userDetails = userOnboardingInfoRepository.findByUser(user);
+
+        userDetails.setNickName(userDTO.getNickName());
+        userDetails.setProfileImg(newProfileImg);
+        userDetails.setTeam(userDTO.getTeam());
+        userDetails.setIntroduction(userDTO.getIntroduction());
+
+        return userDetails;
     }
 }
