@@ -2,12 +2,13 @@ package com.boot.gugi.controller;
 
 import com.boot.gugi.base.dto.MatePostStatusDTO;
 import com.boot.gugi.base.dto.OnboardingInfoDTO;
+import com.boot.gugi.base.dto.UserDTO;
 import com.boot.gugi.base.status.SuccessStatus;
-import com.boot.gugi.exception.UserSuccessResult;
+import com.boot.gugi.base.status.UserSuccessStatus;
 import com.boot.gugi.model.MateRequest;
 import com.boot.gugi.service.MyPageService;
-import com.boot.gugi.service.UserService;
 import com.boot.gugi.base.ApiResponse;
+import com.boot.gugi.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -36,7 +37,14 @@ public class UserController {
 
         OnboardingInfoDTO.DefineUserResponse defineUserResponse = userService.createUser(response, authorizationHeader,defineUserRequest,profileImg);
 
-        return ApiResponse.onSuccess(UserSuccessResult.CREATED_DEFINE_USER, defineUserResponse);
+        return ApiResponse.onSuccess(UserSuccessStatus.CREATED_DEFINE_USER, defineUserResponse);
+    }
+
+    @GetMapping(value = "/info")
+    public ResponseEntity<ApiResponse<UserDTO.UserResponse>> getUserInfo(HttpServletRequest request, HttpServletResponse response) {
+
+        UserDTO.UserResponse user = userService.getCurrentUser(request, response);
+        return ApiResponse.onSuccess(UserSuccessStatus.GET_USER, user);
     }
 
     @PostMapping(value = "/mate-requests/{requestId}/status")
@@ -46,7 +54,7 @@ public class UserController {
 
         myPageService.respondToMateRequest(request, response, requestId, status);
 
-        return ApiResponse.onSuccess(UserSuccessResult.UPDATE_MATE_REQUEST);
+        return ApiResponse.onSuccess(UserSuccessStatus.UPDATE_MATE_REQUEST);
     }
 
     @GetMapping(value = "/notifications/all")
