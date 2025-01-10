@@ -52,4 +52,14 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<MatePost> matePosts;
+
+    public String getGenderKorean() {
+        if (gender == 1) {
+            return "남성";
+        } else if (gender == 2) {
+            return "여성";
+        } else {
+            throw new IllegalArgumentException("Invalid gender value: " + gender);
+        }
+    }
 }
