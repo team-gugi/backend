@@ -11,4 +11,6 @@ public interface UserOnboardingInfoRepository extends JpaRepository<UserOnboardi
 
     @Query("SELECT u.nickName FROM UserOnboardingInfo u WHERE u.user = :user")
     String findNickNameByUser(@Param("user") User user);
+
+    void deleteByUser(User user);
 }

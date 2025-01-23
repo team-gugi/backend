@@ -1,5 +1,6 @@
 package com.boot.gugi.base.config;
 
+import com.boot.gugi.token.service.OAuth2UserService;
 import com.boot.gugi.token.service.OAuthLoginFailureHandler;
 import com.boot.gugi.token.service.OAuthLoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class SecurityConfig {
 
     private final OAuthLoginSuccessHandler oAuthLoginSuccessHandler;
     private final OAuthLoginFailureHandler oAuthLoginFailureHandler;
+    private final OAuth2UserService oAuth2UserService;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -55,6 +57,9 @@ public class SecurityConfig {
 
                 .oauth2Login(oauth ->
                         oauth
+                                .userInfoEndpoint(userInfoEndpointConfig -> userInfoEndpointConfig
+                                        .userService(oAuth2UserService)
+                                )
                                 .successHandler(oAuthLoginSuccessHandler)
                                 .failureHandler(oAuthLoginFailureHandler)
                 );

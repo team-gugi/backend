@@ -6,6 +6,7 @@ import com.boot.gugi.token.exception.TokenErrorResult;
 import com.boot.gugi.token.exception.TokenException;
 import com.boot.gugi.exception.UserErrorResult;
 import com.boot.gugi.exception.UserException;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -145,4 +146,20 @@ public class JwtUtil {
         return userRepository.findByUserId(userId)
                 .orElseThrow(() -> new UserException(UserErrorResult.NOT_FOUND_USER));
     }
+
+    public Date getExpirationDateFromToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(this.getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            return claims.getExpiration();
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("유효하지 않은 토큰입니다.: {}", e.getMessage());
+            throw new TokenException(TokenErrorResult.INVALID_TOKEN);
+        }
+    }
+
 }

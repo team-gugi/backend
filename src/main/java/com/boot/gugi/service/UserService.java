@@ -4,17 +4,19 @@ import com.boot.gugi.base.dto.OnboardingInfoDTO;
 import com.boot.gugi.base.dto.UserDTO;
 import com.boot.gugi.exception.UserErrorResult;
 import com.boot.gugi.exception.UserException;
+import com.boot.gugi.model.MatePost;
 import com.boot.gugi.model.User;
 import com.boot.gugi.model.UserOnboardingInfo;
-import com.boot.gugi.repository.UserOnboardingInfoRepository;
-import com.boot.gugi.repository.UserRepository;
+import com.boot.gugi.repository.*;
 import com.boot.gugi.token.exception.TokenErrorResult;
 import com.boot.gugi.token.exception.TokenException;
 import com.boot.gugi.token.model.RefreshToken;
 import com.boot.gugi.token.repository.RefreshTokenRepository;
+import com.boot.gugi.token.service.OAuth2UnlinkService;
 import com.boot.gugi.token.service.TokenServiceImpl;
 import com.boot.gugi.token.util.CookieUtil;
 import com.boot.gugi.token.util.JwtUtil;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,8 @@ import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -40,6 +44,11 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserOnboardingInfoRepository userOnboardingInfoRepository;
     private final S3Service s3Service;
+    private final OAuth2UnlinkService oAuth2UnlinkService;
+    private final RedisService redisService;
+    private final DiaryRepository diaryRepository;
+    private final MatePostRepository matePostRepository;
+    private final MateRequestRepository mateRequestRepository;
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
@@ -163,5 +172,71 @@ public class UserService {
         userDetails.setIntroduction(userDTO.getIntroduction());
 
         return userDetails;
+    }
+
+    @Transactional
+    public void withdraw(HttpServletRequest request, HttpServletResponse response) {
+
+        User user = validateUser(request, response);
+        Cookie cookie = cookieUtil.getAccessCookie(request);
+        String accessToken = cookie.getValue();
+
+        //Oauth 토큰 처리
+        unlinkOAuthAccount(user);
+
+        //사용자 게시물 및 매칭 요청 삭제
+        deleteUserPostsAndRequests(user, user.getUserId());
+
+        //JWT 토큰 처리
+        handleTokenCleanup(accessToken, user.getUserId());
+        handleCookieCleanup(response);
+
+        //사용자 삭제
+        userOnboardingInfoRepository.deleteByUser(user);
+        userRepository.delete(user);
+    }
+
+    private void unlinkOAuthAccount(User user) {
+        String provider = user.getProvider();
+        String providerId = user.getProviderId();
+
+        oAuth2UnlinkService.unlink(provider, providerId);
+        redisService.deleteValues(provider + "-oauth:" + providerId);
+    }
+
+    private void deleteUserPostsAndRequests(User user, UUID userId) {
+
+        // post 삭제
+        List<MatePost> matePostList = matePostRepository.findAllByUser(user);
+        for (MatePost post : matePostList) {
+            mateRequestRepository.deleteAllByMatePost(post);
+            matePostRepository.delete(post);
+        }
+
+        // request 삭제
+        mateRequestRepository.deleteAllByApplicant(user);
+        // diary 삭제
+        diaryRepository.deleteAllByUserId(userId);
+    }
+
+    private void handleTokenCleanup(String accessToken, UUID userId) {
+        refreshTokenRepository.deleteByUserId(userId); // 리프레쉬 토큰 삭제
+        Date expirationDate = jwtUtil.getExpirationDateFromToken(accessToken);
+        tokenServiceImpl.addToBlacklist(accessToken, expirationDate); // 액세스 토큰 블랙리스트 등록
+    }
+
+    private void handleCookieCleanup(HttpServletResponse response) {
+        List<String> cookiesToClear = List.of("access_token", "refresh_token");
+        clearCookies(cookiesToClear, response);
+    }
+
+    private void clearCookies(List<String> cookieNames, HttpServletResponse response) {
+        for (String cookieName : cookieNames) {
+            ResponseCookie responseCookie = ResponseCookie.from(cookieName, null)
+                    .maxAge(0)
+                    .path("/")
+                    .build();
+            response.addHeader("Set-Cookie", responseCookie.toString());
+        }
     }
 }

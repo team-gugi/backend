@@ -3,6 +3,7 @@ package com.boot.gugi.token.service;
 import com.boot.gugi.token.exception.TokenErrorResult;
 import com.boot.gugi.token.exception.TokenException;
 import com.boot.gugi.token.model.RefreshToken;
+import com.boot.gugi.token.repository.BlacklistTokenRepository;
 import com.boot.gugi.token.repository.RefreshTokenRepository;
 import com.boot.gugi.token.util.CookieUtil;
 import com.boot.gugi.token.util.JwtUtil;
@@ -17,6 +18,8 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.util.Date;
 import java.util.UUID;
 
 @Service
@@ -29,6 +32,7 @@ public class TokenServiceImpl implements TokenService {
     private long REFRESH_TOKEN_EXPIRATION_TIME;
 
     private final RefreshTokenRepository refreshTokenRepository;
+    private final BlacklistTokenRepository blacklistTokenRepository;
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
 
@@ -53,17 +57,43 @@ public class TokenServiceImpl implements TokenService {
         return newAccessCookie.getValue();
     }
 
-    @Override
-    public UUID getUserIdFromAccessToken(HttpServletRequest request, HttpServletResponse response) {
+    private String getAccessToken(HttpServletRequest request, HttpServletResponse response) {
         Cookie cookie = cookieUtil.getAccessCookie(request);
         String accessToken = (cookie != null) ? cookie.getValue() : null;
+
+        //로그아웃, 회원탈퇴된 액세스 토큰인지 확인
+        if (isTokenBlacklisted(accessToken)) {
+            logger.info("Access token is blacklisted: {}", accessToken);
+            throw new TokenException(TokenErrorResult.BLACKLISTED_TOKEN);
+        }
 
         if (accessToken == null || jwtUtil.isTokenExpired(accessToken)) {
             accessToken = reissueAccessToken(request, response);
         }
 
+        return accessToken;
+    }
+
+    @Override
+    public UUID getUserIdFromAccessToken(HttpServletRequest request, HttpServletResponse response) {
+        String accessToken = getAccessToken(request, response);
         UUID userId = UUID.fromString(jwtUtil.getUserIdFromToken(accessToken));
         logger.info("Extracted userId: {}", userId);
         return userId;
     }
+
+    public void addToBlacklist(String token, Date expirationDate) {
+        long expirationMillis = expirationDate.getTime() - System.currentTimeMillis();
+        if (expirationMillis > 0) {
+            Duration expiration = Duration.ofMillis(expirationMillis);
+            blacklistTokenRepository.save(token, expiration);
+        } else {
+            throw new IllegalArgumentException("토큰의 만료 시간이 이미 지났습니다.");
+        }
+    }
+
+    public boolean isTokenBlacklisted(String token) {
+        return blacklistTokenRepository.exists(token);
+    }
+
 }
