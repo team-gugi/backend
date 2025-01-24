@@ -235,8 +235,21 @@ public class UserService {
             ResponseCookie responseCookie = ResponseCookie.from(cookieName, null)
                     .maxAge(0)
                     .path("/")
+                    .httpOnly(true)
+                    .secure(true)
                     .build();
             response.addHeader("Set-Cookie", responseCookie.toString());
         }
+    }
+
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+
+        User user = validateUser(request, response);
+        Cookie cookie = cookieUtil.getAccessCookie(request);
+        String accessToken = cookie.getValue();
+
+        //JWT 토큰 처리
+        handleTokenCleanup(accessToken, user.getUserId());
+        handleCookieCleanup(response);
     }
 }

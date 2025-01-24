@@ -41,6 +41,9 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public String reissueAccessToken(HttpServletRequest request, HttpServletResponse response) {
         Cookie cookie = cookieUtil.getRefreshCookie(request);
+        if (cookie == null || cookie.getValue() == null || cookie.getValue().isEmpty()) {
+            throw new TokenException(TokenErrorResult.REFRESH_TOKEN_NOT_FOUND);
+        }
         String refreshToken = cookie.getValue();
 
         UUID userId = UUID.fromString(jwtUtil.getUserIdFromToken(refreshToken));
