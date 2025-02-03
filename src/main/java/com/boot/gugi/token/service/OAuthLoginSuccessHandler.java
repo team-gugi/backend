@@ -4,6 +4,7 @@ import com.boot.gugi.model.User;
 import com.boot.gugi.repository.UserOnboardingInfoRepository;
 import com.boot.gugi.repository.UserRepository;
 import com.boot.gugi.token.auth.KakaoUserInfo;
+import com.boot.gugi.token.auth.NaverUserInfo;
 import com.boot.gugi.token.auth.OAuth2UserInfo;
 import com.boot.gugi.token.model.RefreshToken;
 import com.boot.gugi.token.repository.RefreshTokenRepository;
@@ -21,6 +22,7 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -71,8 +73,12 @@ public class OAuthLoginSuccessHandler extends SimpleUrlAuthenticationSuccessHand
         if ("kakao".equals(provider)) {
             log.info("카카오 로그인 요청");
             return new KakaoUserInfo(authToken.getPrincipal().getAttributes());
+        } else if ("naver".equals(provider)) {
+            log.info("네이버 로그인 요청");
+            return new NaverUserInfo((Map<String, Object>) authToken.getPrincipal().getAttributes().get("response"));
+        } else {
+            throw new UnsupportedOperationException("지원하지 않는 로그인 제공자입니다: " + provider);
         }
-        throw new UnsupportedOperationException("지원하지 않는 로그인 제공자입니다: " + provider);
     }
 
     private void handleNewUser(HttpServletRequest request, HttpServletResponse response,
