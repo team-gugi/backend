@@ -73,4 +73,21 @@ public class UserController {
 
         return ApiResponse.onSuccess(SuccessStatus._GET, mateRequestStatusList);
     }
+
+    @PostMapping("/withdraw")
+    public ResponseEntity<ApiResponse<Object>> withdraw(HttpServletRequest request, HttpServletResponse response) {
+
+        userService.withdraw(request, response);
+
+        return ApiResponse.onSuccess(SuccessStatus._WITHDRAW);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Object>> logout(HttpServletRequest request, HttpServletResponse response) {
+
+        userService.logout(request, response);
+
+        return ApiResponse.onSuccess(SuccessStatus._LOGOUT);
+    }
+
 }

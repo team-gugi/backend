@@ -13,7 +13,9 @@ public enum SuccessStatus implements BaseCode {
     _CREATED(HttpStatus.CREATED, "201", "생성에 성공했습니다."),
     _UPDATED(HttpStatus.OK, "200", "수정에 성공했습니다."),
     _GET(HttpStatus.OK, "200", "데이터 조회에 성공했습니다."),
-    _APPLY(HttpStatus.CREATED, "201", "신청이 완료되었습니다.");
+    _APPLY(HttpStatus.CREATED, "201", "신청이 완료되었습니다."),
+    _WITHDRAW(HttpStatus.OK, "200", "회원탈퇴에 성공했습니다."),
+    _LOGOUT(HttpStatus.OK, "200", "로그아웃에 성공했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
