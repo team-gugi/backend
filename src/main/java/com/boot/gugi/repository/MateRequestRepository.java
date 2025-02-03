@@ -17,5 +17,5 @@ public interface MateRequestRepository extends JpaRepository<MateRequest, UUID> 
     void deleteAllByApplicant(User applicant);
     @Transactional
     void deleteAllByMatePost(MatePost matePost);
-    
+    List<MateRequest> findByMatePost(MatePost matePost);
 }
