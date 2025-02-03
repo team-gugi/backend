@@ -12,4 +12,5 @@ public interface MateRequestRepository extends JpaRepository<MateRequest, UUID> 
 
     boolean existsByApplicantAndMatePost(User applicant, MatePost matePost);
     List<MateRequest> findAllByApplicant(User applicant);
+    List<MateRequest> findByMatePost(MatePost matePost);
 }
