@@ -19,9 +19,12 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +42,8 @@ public class MateService {
     private final MatePostRepository matePostRepository;
     private final MateRequestRepository mateRequestRepository;
     private final JPAQueryFactory queryFactory;
+
+    private static final Logger logger = LoggerFactory.getLogger(MateService.class);
 
     @Transactional
     public void createMatePost(HttpServletRequest request, HttpServletResponse response, MateDTO.MateRequest matePostDetails) {
@@ -297,5 +302,21 @@ public class MateService {
                 .status(ApplicationStatusEnum.PENDING)
                 .appliedAt(LocalDateTime.now())
                 .build();
+    }
+
+    @Scheduled(cron = "0 0 0 * * ?")
+    public void deleteMatePosts() {
+        List<MatePost> expiredPosts = matePostRepository.findByGameDateBefore(LocalDate.now());
+        deleteMateRequests(expiredPosts);
+        matePostRepository.deleteAll(expiredPosts);
+
+        logger.info("Deleted {} expired posts.", expiredPosts.size());
+    }
+
+    public void deleteMateRequests(List<MatePost> expiredPosts) {
+        for (MatePost post : expiredPosts) {
+            List<MateRequest> requests = mateRequestRepository.findByMatePost(post);
+            mateRequestRepository.deleteAll(requests);
+        }
     }
 }
