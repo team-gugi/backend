@@ -291,6 +291,10 @@ public class MateService {
             throw new PostException(PostErrorResult.ALREADY_APPLIED);
         }
 
+        if (existingMatePost.getConfirmedMembers().equals(existingMatePost.getMember())) {
+            throw new PostException(PostErrorResult.RECRUITMENT_COMPLETED);
+        }
+
         MateRequest savedRequest = registerRequest(applicant, existingMatePost);
         mateRequestRepository.save(savedRequest);
     }
