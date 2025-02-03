@@ -16,7 +16,8 @@ public enum PostErrorResult implements BaseErrorCode {
     ALREADY_APPLIED(HttpStatus.CONFLICT,"409", "이미 신청한 게시물입니다."),
     NOT_FOUND_REQUEST(HttpStatus.NOT_FOUND, "404", "해당 신청 기록이 존재하지 않습니다."),
     ALREADY_RESPONDED(HttpStatus.CONFLICT,"409", "이미 처리된 신청입니다."),
-    MAX_MEMBERS_REACHED(HttpStatus.CONFLICT,"409","더 이상 요청을 수락할 수 없습니다. 최대 멤버 수에 도달했습니다.");
+    MAX_MEMBERS_REACHED(HttpStatus.CONFLICT,"409","더 이상 요청을 수락할 수 없습니다. 최대 멤버 수에 도달했습니다."),
+    RECRUITMENT_COMPLETED(HttpStatus.CONFLICT, "409", "이미 모집이 완료된 포스트입니다.");
 
 
     private final HttpStatus httpStatus;
