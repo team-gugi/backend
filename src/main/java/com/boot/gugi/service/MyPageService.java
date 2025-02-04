@@ -174,6 +174,7 @@ public class MyPageService {
                 matePost.getMateId(),
                 matePost.getTitle(),
                 matePost.getContent(),
+                matePost.getContact(),
                 matePost.getDaysSinceWritten(),
                 matePost.getDaysUntilGame(),
                 matePost.getConfirmedMembers(),

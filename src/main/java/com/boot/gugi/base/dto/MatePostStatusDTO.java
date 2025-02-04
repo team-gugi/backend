@@ -48,6 +48,7 @@ public class MatePostStatusDTO {
         private UUID mateId;
         private String title;
         private String content;
+        private String contact;
         private Integer daysSinceWritten;
         private Integer daysUntilGame;
         private Integer confirmedMembers;
