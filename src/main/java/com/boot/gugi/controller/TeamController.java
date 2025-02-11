@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/team")
 @RequiredArgsConstructor
@@ -34,5 +36,13 @@ public class TeamController {
         teamService.saveTeamInfo(teamDetails, teamLogo);
 
         return ApiResponse.onSuccess(SuccessStatus._OK);
+    }
+
+    @GetMapping(value = "/schedule")
+    public ResponseEntity<ApiResponse<List<TeamDTO.ScheduleResponse>>> scrapeSchedule(@RequestParam @Valid String teamCode) {
+
+        List<TeamDTO.ScheduleResponse> teamSchedule = teamService.getTeamSchedule(teamCode);
+
+        return ApiResponse.onSuccess(SuccessStatus._GET, teamSchedule);
     }
 }

@@ -60,6 +60,9 @@ dependencies {
 	annotationProcessor "jakarta.persistence:jakarta.persistence-api"
 	//Jsoup
 	implementation 'org.jsoup:jsoup:1.17.2'
+	//Selenium
+	implementation 'org.seleniumhq.selenium:selenium-java'
+	implementation 'io.github.bonigarcia:webdrivermanager:5.9.2'
 }
 
 def generated = 'build/generated'
