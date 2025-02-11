@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
 public class TeamDTO {
 
@@ -35,6 +36,46 @@ public class TeamDTO {
         private Integer draw;
         private BigDecimal winningRate;
         private Integer difference;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ScheduleRequest {
+        private String date;
+        private String specificDate;
+        private String homeTeam;
+        private String awayTeam;
+        private String homeImg;
+        private String awayImg;
+        private Integer homeScore;
+        private Integer awayScore;
+        private String time;
+        private String stadium;
+        private String cancellationReason;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ScheduleResponse {
+        private String date;
+        private Set<SpecificSchedule> specificSchedule;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SpecificSchedule {
+        private String specificDate;
+        private String homeTeam;
+        private String awayTeam;
+        private String logoUrl;
+        private Integer homeScore;
+        private Integer awayScore;
+        private String time;
+        private String stadium;
+        private String cancellationReason;
     }
 
     @Data

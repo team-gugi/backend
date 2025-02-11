@@ -1,5 +1,6 @@
 package com.boot.gugi.service;
 
+import com.boot.gugi.base.Enum.TeamEnum;
 import com.boot.gugi.base.dto.TeamDTO;
 import com.boot.gugi.model.Team;
 import com.boot.gugi.repository.RedisRepository;
@@ -8,6 +9,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -63,5 +66,13 @@ public class TeamService {
                 .ticketShop(teamDetails.getTicketShop())
                 .mdShop(teamDetails.getMdShop())
                 .build();
+    }
+
+    public List<TeamDTO.ScheduleResponse> getTeamSchedule(String teamCode) {
+
+        String teamName = TeamEnum.getShortNameByLowerCase(teamCode);
+        List<TeamDTO.ScheduleResponse> scheduleList = redisRepository.findTeamSchedule(teamName);
+
+        return scheduleList;
     }
 }

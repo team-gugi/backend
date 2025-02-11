@@ -2,10 +2,7 @@ package com.boot.gugi.repository;
 
 import com.boot.gugi.base.dto.StadiumDTO;
 import com.boot.gugi.base.dto.TeamDTO;
-import com.boot.gugi.model.Food;
-import com.boot.gugi.model.Stadium;
-import com.boot.gugi.model.Team;
-import com.boot.gugi.model.TeamRank;
+import com.boot.gugi.model.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -17,10 +14,8 @@ import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,14 +32,16 @@ public class RedisRepository {
     private static final String TEAM_CODE_PREFIX = "team-code:";
     private static final String STADIUM_CODE_PREFIX = "stadium-code:";
     private static final String FOOD_CODE_PREFIX = "food-code:";
+    private static final String SCHEDULE_PREFIX = "schedule:";
 
     private final TeamRankRepository teamRankRepository;
+    private final TeamScheduleRepository teamScheduleRepository;
     private final RedisTemplate<String, String> redisTemplate;
     private final RedissonClient redissonClient;
     private final ObjectMapper objectMapper;
 
     public void saveRank(TeamRank rankInfo) {
-        saveToRedis(TEAM_RANK_PREFIX + rankInfo.getTeamRank(), rankInfo, TEAM_RANK_EXPIRATION_TIME);
+        saveToRedis(TEAM_RANK_PREFIX + rankInfo.getTeamRank() , rankInfo, TEAM_RANK_EXPIRATION_TIME);
     }
 
     public void saveTeam(Team teamInfo) {
@@ -53,6 +50,17 @@ public class RedisRepository {
 
     public void saveStadium(Stadium stadiumInfo) {
         saveToRedis(STADIUM_CODE_PREFIX + stadiumInfo.getStadiumCode(), stadiumInfo, null);
+    }
+
+    private String getRedisKeySchedule(String date, String teamName) { return SCHEDULE_PREFIX + date + ":" + teamName;}
+
+    public void saveSchedule(TeamSchedule teamSchedule) {
+
+        String homeKey = getRedisKeySchedule(teamSchedule.getDate(), teamSchedule.getHomeTeam());
+        saveForSet(homeKey, teamSchedule);
+
+        String awayKey = getRedisKeySchedule(teamSchedule.getDate(), teamSchedule.getAwayTeam());
+        saveForSet(awayKey, teamSchedule);
     }
 
     public void saveFood(Food foodDetails, Integer stadiumCode) {
@@ -76,6 +84,32 @@ public class RedisRepository {
             }
         } catch (JsonProcessingException e) {
             logError(object.getClass().getSimpleName(), key, e);
+        }
+    }
+
+    private void saveForSet(String key, TeamSchedule teamSchedule) {
+        try {
+            String jsonValue = objectMapper.writeValueAsString(teamSchedule);
+            redisTemplate.opsForSet().add(key, jsonValue);
+        } catch (Exception e) {
+            logError(teamSchedule.getClass().getSimpleName(), key, e);
+        }
+    }
+
+    public void deleteSchedule(TeamSchedule teamSchedule) {
+        String homeKey = getRedisKeySchedule(teamSchedule.getDate(), teamSchedule.getHomeTeam());
+        deleteFromSet(homeKey, teamSchedule);
+
+        String awayKey = getRedisKeySchedule(teamSchedule.getDate(), teamSchedule.getAwayTeam());
+        deleteFromSet(awayKey, teamSchedule);
+    }
+
+    private void deleteFromSet(String key, TeamSchedule teamSchedule) {
+        try {
+            String jsonValue = objectMapper.writeValueAsString(teamSchedule);
+            redisTemplate.opsForSet().remove(key, jsonValue);
+        } catch (Exception e) {
+            logger.error("Failed to process {} object in Redis. Key: {}. Error: {}", teamSchedule.getClass().getSimpleName(), key, e.getMessage());
         }
     }
 
@@ -202,5 +236,66 @@ public class RedisRepository {
             }
         }
         return null;
+    }
+
+    public List<TeamDTO.ScheduleResponse> findTeamSchedule(String teamCode) {
+        List<TeamDTO.ScheduleResponse> scheduleList = new ArrayList<>();
+
+        for (int year = 2024; year <= 2025; year++) {
+            for (int month = 1; month <= 12; month++) {
+                String date = String.format("%04d.%02d", year, month);
+                String key = getRedisKeySchedule(date, teamCode);
+
+                TeamDTO.ScheduleResponse scheduleResponse = new TeamDTO.ScheduleResponse();
+                scheduleResponse.setDate(date);
+                Set<TeamDTO.SpecificSchedule> specificSchedules = new HashSet<>();
+
+                Set<String> jsonSchedules = redisTemplate.opsForSet().members(key);
+                if (jsonSchedules != null && !jsonSchedules.isEmpty()) {
+
+                    for (String jsonSchedule : jsonSchedules) {
+                        try {
+                            TeamSchedule teamSchedule = objectMapper.readValue(jsonSchedule, TeamSchedule.class);
+                            TeamDTO.SpecificSchedule specificSchedule = convertToSpecificSchedule(teamSchedule, teamCode);
+                            specificSchedules.add(specificSchedule);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                } else {
+                    List<TeamSchedule> teamSchedules = teamScheduleRepository.findByDateAndTeam(date, teamCode);
+                    for (TeamSchedule teamSchedule : teamSchedules) {
+                        TeamDTO.SpecificSchedule specificSchedule = convertToSpecificSchedule(teamSchedule, teamCode);
+                        specificSchedules.add(specificSchedule);
+                    }
+
+                }
+                scheduleResponse.setSpecificSchedule(specificSchedules);
+                scheduleList.add(scheduleResponse);
+            }
+        }
+
+        return scheduleList;
+    }
+
+    private TeamDTO.SpecificSchedule convertToSpecificSchedule(TeamSchedule teamSchedule, String teamCode) {
+        TeamDTO.SpecificSchedule specificSchedule = new TeamDTO.SpecificSchedule();
+
+        specificSchedule.setSpecificDate(teamSchedule.getSpecificDate());
+        specificSchedule.setHomeTeam(teamSchedule.getHomeTeam());
+        specificSchedule.setAwayTeam(teamSchedule.getAwayTeam());
+        specificSchedule.setHomeScore(teamSchedule.getHomeScore());
+        specificSchedule.setAwayScore(teamSchedule.getAwayScore());
+        specificSchedule.setTime(teamSchedule.getGameTime());
+        specificSchedule.setStadium(teamSchedule.getStadium());
+        specificSchedule.setCancellationReason(teamSchedule.getCancellationReason());
+
+        if (teamCode.equals(teamSchedule.getHomeTeam())) {
+            specificSchedule.setLogoUrl(teamSchedule.getAwayImg());
+        } else {
+            specificSchedule.setLogoUrl(teamSchedule.getHomeImg());
+        }
+
+        return specificSchedule;
     }
 }
