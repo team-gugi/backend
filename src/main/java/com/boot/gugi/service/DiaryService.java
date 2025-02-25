@@ -212,7 +212,8 @@ public class DiaryService {
                 diary.getGameStadium().toKorean(),
                 diary.getHomeTeam().toKorean(),
                 diary.getAwayTeam().toKorean(),
-                diary.getGameResult().toEnglish()
+                diary.getGameResult().toEnglish(),
+                diary.getGameImg()
         );
     }
 

@@ -34,6 +34,7 @@ public class DiaryDTO {
         private String homeTeam;
         private String awayTeam;
         private String gameResult;
+        private String gameImg;
     }
 
     @Data
