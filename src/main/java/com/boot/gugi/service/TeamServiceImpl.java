@@ -343,6 +343,8 @@ public class TeamServiceImpl implements MainService{
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless");
         options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--disable-gpu");
 
         WebDriver driver = new ChromeDriver(options);
 
@@ -355,11 +357,9 @@ public class TeamServiceImpl implements MainService{
 
             for (int year = 2024; year <= 2025; year++) {
                 yearSelect.selectByValue(String.valueOf(year));
-                //logger.info("Processing year: {}", year);
 
                 for (int month = 1; month <= 12; month++) {
                     monthSelect.selectByValue(String.format("%02d", month));
-                    //logger.info("Processing month: {}", month);
 
                     WebElement table = driver.findElement(By.className("tbl-type06"));
                     WebElement tbody = table.findElement(By.tagName("tbody"));
