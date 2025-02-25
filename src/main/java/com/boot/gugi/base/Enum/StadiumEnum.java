@@ -18,7 +18,8 @@ public enum StadiumEnum implements Translate {
     ANY(9, "상관없음", "없음"),
     CHEONGJU(10, "청주종합경기장", "청주"),
     ULSAN(11, "울산 문수 야구장", "울산"),
-    POHANG(12, "포항 야구장", "포항");
+    POHANG(12, "포항 야구장", "포항"),
+    NEWDAEJEON(13, "대전 한화생명 볼파크", "대전(신)");
 
     private final int id;
     private final String displayNameKorean;
