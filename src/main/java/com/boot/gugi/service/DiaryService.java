@@ -206,12 +206,19 @@ public class DiaryService {
     }
 
     private DiaryDTO.DiarySingleDto convertToDiarySingleDto(Diary diary) {
+
+        String homeTeam = diary.getHomeTeam().toKorean();
+        String awayTeam = diary.getAwayTeam().toKorean();
+
+        String firstWordOfHomeTeam = homeTeam.split(" ")[0];
+        String firstWordOfAwayTeam = awayTeam.split(" ")[0];
+
         return new DiaryDTO.DiarySingleDto(
                 diary.getDiaryId(),
                 diary.getGameDate(),
                 diary.getGameStadium().toKorean(),
-                diary.getHomeTeam().toKorean(),
-                diary.getAwayTeam().toKorean(),
+                firstWordOfHomeTeam,
+                firstWordOfAwayTeam,
                 diary.getGameResult().toEnglish(),
                 diary.getGameImg()
         );
