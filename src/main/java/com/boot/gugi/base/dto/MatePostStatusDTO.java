@@ -15,7 +15,7 @@ public class MatePostStatusDTO {
     public static class MateRequestSummaryDTO {
         private List<AppliedRequestNotificationDTO> notification;
         private List<RequestedPostStatusDTO> pending;
-        private List<RequestedPostStatusDTO> accepted;
+        private List<AcceptedPostStatusDTO> accepted;
         private List<RequestedPostStatusDTO> rejected;
     }
 
@@ -51,6 +51,21 @@ public class MatePostStatusDTO {
         private Integer daysSinceWritten;
         private Integer daysUntilGame;
         private Integer confirmedMembers;
+        private MateDTO.ResponseOption options;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AcceptedPostStatusDTO {
+        private Boolean isOwner;
+        private UUID mateId;
+        private String title;
+        private String content;
+        private Integer daysSinceWritten;
+        private Integer daysUntilGame;
+        private Integer confirmedMembers;
+        private String contact;
         private MateDTO.ResponseOption options;
     }
 }

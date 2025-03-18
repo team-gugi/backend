@@ -78,7 +78,7 @@ public class MyPageService {
 
         List<MatePostStatusDTO.AppliedRequestNotificationDTO> notificationList = new ArrayList<>();
         List<MatePostStatusDTO.RequestedPostStatusDTO> pendingList = new ArrayList<>();
-        List<MatePostStatusDTO.RequestedPostStatusDTO> acceptedList = new ArrayList<>();
+        List<MatePostStatusDTO.AcceptedPostStatusDTO> acceptedList = new ArrayList<>();
         List<MatePostStatusDTO.RequestedPostStatusDTO> rejectedList = new ArrayList<>();
 
         List<MateRequest> mateRequests = mateRequestRepository.findAllByApplicant(user);
@@ -92,23 +92,22 @@ public class MyPageService {
 
     private void processMateRequests(List<MateRequest> mateRequests,
                                      List<MatePostStatusDTO.RequestedPostStatusDTO> pendingList,
-                                     List<MatePostStatusDTO.RequestedPostStatusDTO> acceptedList,
+                                     List<MatePostStatusDTO.AcceptedPostStatusDTO> acceptedList,
                                      List<MatePostStatusDTO.RequestedPostStatusDTO> rejectedList) {
         for (MateRequest mateRequest : mateRequests) {
             MatePost matePost = mateRequest.getMatePost();
-            MatePostStatusDTO.RequestedPostStatusDTO dto = convertToMatePostStatusDTO(matePost, false);
 
             switch (mateRequest.getStatus()) {
-                case PENDING -> pendingList.add(dto);
-                case ACCEPTED -> acceptedList.add(dto);
-                case REJECTED -> rejectedList.add(dto);
+                case PENDING -> pendingList.add(convertToMatePostStatusDTO(matePost, false));
+                case ACCEPTED -> acceptedList.add(convertToAcceptedPostStatusDTO(matePost, true));
+                case REJECTED -> rejectedList.add(convertToMatePostStatusDTO(matePost, false));
             }
         }
     }
 
     private void processMatePosts(List<MatePost> matePosts,
                                   List<MatePostStatusDTO.RequestedPostStatusDTO> pendingList,
-                                  List<MatePostStatusDTO.RequestedPostStatusDTO> acceptedList,
+                                  List<MatePostStatusDTO.AcceptedPostStatusDTO> acceptedList,
                                   List<MatePostStatusDTO.AppliedRequestNotificationDTO> notificationList) {
         for (MatePost matePost : matePosts) {
             long confirmedMemberCount = matePost.getConfirmedMembers();
@@ -116,7 +115,7 @@ public class MyPageService {
             if (confirmedMemberCount == 1) {
                 pendingList.add(convertToMatePostStatusDTO(matePost, true));
             } else if (confirmedMemberCount >= 2) {
-                acceptedList.add(convertToMatePostStatusDTO(matePost, true));
+                acceptedList.add(convertToAcceptedPostStatusDTO(matePost, true));
             }
 
             List<MatePostStatusDTO.AppliedRequestNotificationDTO> pendingNotifications = matePost.getMateRequestList().stream()
@@ -130,7 +129,7 @@ public class MyPageService {
 
     private MatePostStatusDTO.MateRequestSummaryDTO buildSummaryDTO(
             List<MatePostStatusDTO.AppliedRequestNotificationDTO> notificationList,
-            List<MatePostStatusDTO.RequestedPostStatusDTO> acceptedList,
+            List<MatePostStatusDTO.AcceptedPostStatusDTO> acceptedList,
             List<MatePostStatusDTO.RequestedPostStatusDTO> pendingList,
             List<MatePostStatusDTO.RequestedPostStatusDTO> rejectedList) {
 
@@ -177,6 +176,33 @@ public class MyPageService {
                 matePost.getDaysSinceWritten(),
                 matePost.getDaysUntilGame(),
                 matePost.getConfirmedMembers(),
+                new MateDTO.ResponseOption(
+                        matePost.getGender().toKorean(),
+                        matePost.getAge().toKorean(),
+                        formattedGameDate,
+                        firstWordOfHomeTeam,
+                        matePost.getMember(),
+                        matePost.getGameStadium().toKorean()
+                )
+        );
+    }
+
+    private MatePostStatusDTO.AcceptedPostStatusDTO convertToAcceptedPostStatusDTO(MatePost matePost, Boolean isOwner) {
+        LocalDate gameDate = matePost.getGameDate();
+        String formattedGameDate = String.format("%02d-%02d", gameDate.getMonthValue(), gameDate.getDayOfMonth());
+
+        String homeTeam = matePost.getHomeTeam().toKorean();
+        String firstWordOfHomeTeam = homeTeam.split(" ")[0];
+
+        return new MatePostStatusDTO.AcceptedPostStatusDTO(
+                isOwner,
+                matePost.getMateId(),
+                matePost.getTitle(),
+                matePost.getContent(),
+                matePost.getDaysSinceWritten(),
+                matePost.getDaysUntilGame(),
+                matePost.getConfirmedMembers(),
+                matePost.getContact(),
                 new MateDTO.ResponseOption(
                         matePost.getGender().toKorean(),
                         matePost.getAge().toKorean(),
