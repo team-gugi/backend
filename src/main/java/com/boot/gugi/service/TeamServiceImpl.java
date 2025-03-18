@@ -352,9 +352,11 @@ public class TeamServiceImpl implements MainService{
         try {
             driver.get("https://www.koreabaseball.com/Schedule/Schedule.aspx");
 
+            Select seriesSelect = new Select(driver.findElement(By.id("ddlSeries")));
             Select yearSelect = new Select(driver.findElement(By.id("ddlYear")));
             Select monthSelect = new Select(driver.findElement(By.id("ddlMonth")));
 
+            seriesSelect.selectByValue("0,9,6");
             for (int year = 2024; year <= 2025; year++) {
                 yearSelect.selectByValue(String.valueOf(year));
 
