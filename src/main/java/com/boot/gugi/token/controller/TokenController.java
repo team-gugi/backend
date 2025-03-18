@@ -22,7 +22,7 @@ public class TokenController {
             HttpServletRequest request,
             HttpServletResponse response) {
 
-        authService.reissueAccessToken(request, response);
+        String token = authService.reissueAccessToken(request, response);
         return ApiResponse.onSuccess(TokenSuccessStatus.CREATED_ACCESS_TOKEN);
     }
 }

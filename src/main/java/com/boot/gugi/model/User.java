@@ -4,9 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.GenericGenerator;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
+@Setter
 @Entity
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -38,4 +41,25 @@ public class User {
     @Column(nullable=false)
     private Integer age;
 
+    @Builder.Default
+    private BigDecimal winRate = BigDecimal.ZERO;
+
+    @Builder.Default
+    private Integer totalDiaryCount = 0;
+
+    @Builder.Default
+    private Integer totalWins = 0;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<MatePost> matePosts;
+
+    public String getGenderKorean() {
+        if (gender == 1) {
+            return "남성";
+        } else if (gender == 2) {
+            return "여성";
+        } else {
+            throw new IllegalArgumentException("Invalid gender value: " + gender);
+        }
+    }
 }

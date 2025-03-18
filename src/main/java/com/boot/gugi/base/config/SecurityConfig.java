@@ -1,5 +1,6 @@
 package com.boot.gugi.base.config;
 
+import com.boot.gugi.token.service.OAuth2UserService;
 import com.boot.gugi.token.service.OAuthLoginFailureHandler;
 import com.boot.gugi.token.service.OAuthLoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -26,13 +27,14 @@ public class SecurityConfig {
 
     private final OAuthLoginSuccessHandler oAuthLoginSuccessHandler;
     private final OAuthLoginFailureHandler oAuthLoginFailureHandler;
+    private final OAuth2UserService oAuth2UserService;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080", "https://www.team-gugi.site", "http://www.team-gugi.site"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Collections.singletonList("*"));
         configuration.setAllowCredentials(true);
@@ -55,6 +57,9 @@ public class SecurityConfig {
 
                 .oauth2Login(oauth ->
                         oauth
+                                .userInfoEndpoint(userInfoEndpointConfig -> userInfoEndpointConfig
+                                        .userService(oAuth2UserService)
+                                )
                                 .successHandler(oAuthLoginSuccessHandler)
                                 .failureHandler(oAuthLoginFailureHandler)
                 );

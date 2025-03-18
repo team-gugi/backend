@@ -23,5 +23,7 @@ public class OnboardingInfoDTO {
         private String introduction;
         private String team;
         private String profileImg;
+        private String access_token;
+        private String refresh_token;
     }
 }
