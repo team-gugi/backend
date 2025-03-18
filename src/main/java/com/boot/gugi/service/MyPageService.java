@@ -99,7 +99,7 @@ public class MyPageService {
 
             switch (mateRequest.getStatus()) {
                 case PENDING -> pendingList.add(convertToMatePostStatusDTO(matePost, false));
-                case ACCEPTED -> acceptedList.add(convertToAcceptedPostStatusDTO(matePost, true));
+                case ACCEPTED -> acceptedList.add(convertToAcceptedPostStatusDTO(matePost, false));
                 case REJECTED -> rejectedList.add(convertToMatePostStatusDTO(matePost, false));
             }
         }
