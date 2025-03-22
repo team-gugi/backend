@@ -307,20 +307,4 @@ public class MateService {
                 .appliedAt(LocalDateTime.now())
                 .build();
     }
-
-    @Scheduled(cron = "0 0 0 * * ?")
-    public void deleteMatePosts() {
-        List<MatePost> expiredPosts = matePostRepository.findByGameDateBefore(LocalDate.now());
-        deleteMateRequests(expiredPosts);
-        matePostRepository.deleteAll(expiredPosts);
-
-        logger.info("Deleted {} expired posts.", expiredPosts.size());
-    }
-
-    public void deleteMateRequests(List<MatePost> expiredPosts) {
-        for (MatePost post : expiredPosts) {
-            List<MateRequest> requests = mateRequestRepository.findByMatePost(post);
-            mateRequestRepository.deleteAll(requests);
-        }
-    }
 }
