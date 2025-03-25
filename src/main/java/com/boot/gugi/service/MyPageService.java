@@ -81,10 +81,10 @@ public class MyPageService {
         List<MatePostStatusDTO.AcceptedPostStatusDTO> acceptedList = new ArrayList<>();
         List<MatePostStatusDTO.RequestedPostStatusDTO> rejectedList = new ArrayList<>();
 
-        List<MateRequest> mateRequests = mateRequestRepository.findAllByApplicant(user);
+        List<MateRequest> mateRequests = mateRequestRepository.findAllByApplicantAndNotExpired(user);
         processMateRequests(mateRequests, pendingList, acceptedList, rejectedList);
 
-        List<MatePost> matePosts = matePostRepository.findAllByUser(user);
+        List<MatePost> matePosts = matePostRepository.findAllByUserAndNotExpired(user);
         processMatePosts(matePosts, pendingList, acceptedList, notificationList);
 
         return buildSummaryDTO(notificationList, acceptedList, pendingList, rejectedList);
