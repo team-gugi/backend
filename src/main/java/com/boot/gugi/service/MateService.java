@@ -2,29 +2,23 @@ package com.boot.gugi.service;
 
 import com.boot.gugi.base.Enum.*;
 import com.boot.gugi.base.dto.MateDTO;
+import com.boot.gugi.base.dto.MatePostWithScore;
 import com.boot.gugi.exception.PostErrorResult;
 import com.boot.gugi.exception.PostException;
 import com.boot.gugi.exception.UserErrorResult;
 import com.boot.gugi.exception.UserException;
 import com.boot.gugi.model.MatePost;
 import com.boot.gugi.model.MateRequest;
-import com.boot.gugi.model.QMatePost;
 import com.boot.gugi.model.User;
 import com.boot.gugi.repository.MateRequestRepository;
 import com.boot.gugi.repository.MatePostRepository;
 import com.boot.gugi.repository.UserRepository;
 import com.boot.gugi.token.service.TokenServiceImpl;
-import com.querydsl.core.BooleanBuilder;
-import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,7 +35,6 @@ public class MateService {
     private final UserRepository userRepository;
     private final MatePostRepository matePostRepository;
     private final MateRequestRepository mateRequestRepository;
-    private final JPAQueryFactory queryFactory;
 
     private static final Logger logger = LoggerFactory.getLogger(MateService.class);
 
@@ -118,15 +111,7 @@ public class MateService {
 
     public List<MateDTO.ResponseByDate> getAllPostsSortedByDate(LocalDateTime cursor) {
 
-        Pageable pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "updatedAt"));
-        List<MatePost> posts;
-
-        if (cursor == null) {
-            posts = matePostRepository.findFirst5ByOrderByUpdatedAtDesc(pageable);
-        } else {
-            posts = matePostRepository.findByUpdatedAtLessThan(cursor, pageable);
-        }
-
+        List<MatePost> posts = matePostRepository.findPostsSortedByDate(cursor, 5);
         return posts.stream()
                 .map(this::convertToLatestDTO)
                 .toList();
@@ -134,93 +119,19 @@ public class MateService {
 
     public List<MateDTO.ResponseByRelevance> getAllPostsSortedByRelevance(String cursor, MateDTO.RequestOption matePostOptions) {
 
-        long matchCountCursor = cursor != null ? Long.parseLong(cursor.split("_")[0]) : 6;
-        LocalDateTime updatedAtCursor = cursor != null ? LocalDateTime.parse(cursor.split("_")[1]) : LocalDateTime.now();
+        List<MatePostWithScore> postsWithScores = matePostRepository.findPostsSortedByRelevance(cursor, 5, matePostOptions);
 
-        BooleanBuilder builder = buildConditions(matePostOptions);
-
-        List<MatePost> posts = queryFactory.selectFrom(QMatePost.matePost)
-                .where(builder)
-                .fetch();
-
-        Map<MatePost, Long> postCountMap = calculateMatchCounts(posts, matePostOptions);
-        List<Map.Entry<MatePost, Long>> sortedEntries = sortAndFilterEntries(postCountMap, matchCountCursor, updatedAtCursor);
-        return buildPagedResult(sortedEntries);
-    }
-
-    private BooleanBuilder buildConditions(MateDTO.RequestOption matePostOptions) {
-        BooleanBuilder builder = new BooleanBuilder();
-        QMatePost qmatePost = QMatePost.matePost;
-
-        if (matePostOptions.getDate() != null) {
-            builder.or(qmatePost.gameDate.eq(matePostOptions.getDate()));
-        }
-        if (matePostOptions.getGender() != null) {
-            builder.or(qmatePost.gender.eq(GenderEnum.fromKorean(matePostOptions.getGender())));
-        }
-        if (matePostOptions.getAge() != null) {
-            builder.or(qmatePost.age.eq(AgeRangeEnum.fromString(matePostOptions.getAge())));
-        }
-        if (matePostOptions.getTeam() != null) {
-            builder.or(qmatePost.homeTeam.eq(TeamEnum.fromString(matePostOptions.getTeam())));
-        }
-        if (matePostOptions.getStadium() != null) {
-            builder.or(qmatePost.gameStadium.eq(StadiumEnum.fromString(matePostOptions.getStadium())));
-        }
-        if (matePostOptions.getMember() != null) {
-            builder.or(qmatePost.member.eq(matePostOptions.getMember()));
+        if (postsWithScores.isEmpty()) {
+            return Collections.emptyList();
         }
 
-        return builder;
-    }
-
-    private Map<MatePost, Long> calculateMatchCounts(List<MatePost> posts, MateDTO.RequestOption matePostOptions) {
-        return posts.stream()
-                .collect(Collectors.toMap(
-                        post -> post,
-                        post -> {
-                            long count = 0;
-                            if (matePostOptions.getDate() != null && post.getGameDate().equals(matePostOptions.getDate())) count++;
-                            if (matePostOptions.getGender() != null && post.getGender().equals(GenderEnum.fromKorean(matePostOptions.getGender()))) count++;
-                            if (matePostOptions.getAge() != null && post.getAge().equals(AgeRangeEnum.fromString(matePostOptions.getAge()))) count++;
-                            if (matePostOptions.getTeam() != null && post.getHomeTeam().equals(TeamEnum.fromString(matePostOptions.getTeam()))) count++;
-                            if (matePostOptions.getStadium() != null && post.getGameStadium().equals(StadiumEnum.fromString(matePostOptions.getStadium()))) count++;
-                            if (matePostOptions.getMember() != null && post.getMember().equals(matePostOptions.getMember())) count++;
-                            return count;
-                        }
-                ));
-    }
-
-    private List<Map.Entry<MatePost, Long>> sortAndFilterEntries(Map<MatePost, Long> postCountMap, long matchCountCursor, LocalDateTime updatedAtCursor) {
-        return postCountMap.entrySet().stream()
-                .filter(entry -> {
-                    long matchCount = entry.getValue();
-                    LocalDateTime updatedAt = entry.getKey().getUpdatedAt();
-                    return (matchCount < matchCountCursor) ||
-                            (matchCount == matchCountCursor && updatedAt.isBefore(updatedAtCursor));
-                })
-                .sorted(Comparator.comparingLong(Map.Entry<MatePost, Long>::getValue).reversed()
-                        .thenComparing(entry -> entry.getKey().getUpdatedAt(), Comparator.reverseOrder()))
+        return postsWithScores.stream()
+                .map(entry -> convertToRelevanceDTO(entry.getMatePost(), generateNextCursor(entry)))
                 .collect(Collectors.toList());
     }
 
-    private List<MateDTO.ResponseByRelevance> buildPagedResult(List<Map.Entry<MatePost, Long>> sortedEntries) {
-        List<MateDTO.ResponseByRelevance> result = new ArrayList<>();
-        String nextCursor = null;
-
-        for (int i = 0; i < sortedEntries.size(); i++) {
-            Map.Entry<MatePost, Long> entry = sortedEntries.get(i);
-            MatePost post = entry.getKey();
-
-            long matchCount = entry.getValue();
-            LocalDateTime updatedAt = post.getUpdatedAt();
-            nextCursor = matchCount + "_" + updatedAt.toString();
-
-            result.add(convertToRelevanceDTO(post, nextCursor));
-            if (result.size() == 5) break;
-        }
-
-        return result;
+    private String generateNextCursor(MatePostWithScore postWithScores) {
+        return postWithScores.getMatchScore() + "_" + postWithScores.getMatePost().getUpdatedAt().toString();
     }
 
     private MateDTO.ResponseByDate convertToLatestDTO(MatePost post) {
