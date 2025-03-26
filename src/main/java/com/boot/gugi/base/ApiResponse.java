@@ -10,15 +10,33 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 @Getter
-@RequiredArgsConstructor
 public class ApiResponse<T> {
     @JsonProperty("isSuccess")
     private final Boolean isSuccess;
     private final String code;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final String errorCode;
     private final String message;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final T payload;
+
+    public ApiResponse(Boolean isSuccess, String code, String message, T payload) {
+        this.isSuccess = isSuccess;
+        this.code = code;
+        this.errorCode = null;
+        this.message = message;
+        this.payload = payload;
+    }
+
+    public ApiResponse(Boolean isSuccess, String code, String errorCode, String message, T payload) {
+        this.isSuccess = isSuccess;
+        this.code = code;
+        this.errorCode = errorCode;
+        this.message = message;
+        this.payload = payload;
+    }
+
     public static <T> ResponseEntity<ApiResponse<T>> onSuccess(BaseCode code, T payload) {
         ApiResponse<T> response = new ApiResponse<>(true, code.getReasonHttpStatus().getCode(), code.getReasonHttpStatus().getMessage(), payload);
         return ResponseEntity.status(code.getReasonHttpStatus().getHttpStatus()).body(response);
@@ -30,7 +48,7 @@ public class ApiResponse<T> {
     }
 
     public static <T> ResponseEntity<ApiResponse<T>> onFailure(BaseErrorCode code) {
-        ApiResponse<T> response = new ApiResponse<>(false, code.getReasonHttpStatus().getCode(), code.getReasonHttpStatus().getMessage(), null);
+        ApiResponse<T> response = new ApiResponse<>(false, code.getReasonHttpStatus().getCode(), code.getReasonHttpStatus().getErrorCode(), code.getReasonHttpStatus().getMessage(), null);
         return ResponseEntity.status(code.getReasonHttpStatus().getHttpStatus()).body(response);
     }
 

@@ -206,6 +206,20 @@ public class MateService {
             throw new PostException(PostErrorResult.RECRUITMENT_COMPLETED);
         }
 
+        if (applicant.getGender() == null || applicant.getGender() == 0) {
+            throw new PostException(PostErrorResult.GENDER_REQUIRED);
+        }
+
+        GenderEnum genderOption = existingMatePost.getGender();
+        if (genderOption != null) {
+            if (genderOption.equals(GenderEnum.FEMALE_ONLY) && applicant.getGender() != 2) {
+                throw new PostException(PostErrorResult.GENDER_MISMATCH);
+            }
+            else if (genderOption.equals(GenderEnum.MALE_ONLY) && applicant.getGender() != 1) {
+                throw new PostException(PostErrorResult.GENDER_MISMATCH);
+            }
+        }
+
         MateRequest savedRequest = registerRequest(applicant, existingMatePost);
         mateRequestRepository.save(savedRequest);
     }

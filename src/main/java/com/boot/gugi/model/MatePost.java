@@ -77,7 +77,7 @@ public class MatePost {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(nullable=false)
+    @Builder.Default
     private boolean expired = false;
 
     @OneToMany(mappedBy = "matePost", cascade = CascadeType.ALL)

@@ -10,10 +10,11 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum UserErrorResult implements BaseErrorCode {
 
-    NOT_FOUND_USER(HttpStatus.NOT_FOUND, "404", "존재하지 않는 유저입니다.");
+    NOT_FOUND_USER(HttpStatus.NOT_FOUND, "404", "NOT_FOUND_USER", "존재하지 않는 유저입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
+    private final String errorCode;
     private final String message;
 
     @Override
@@ -21,6 +22,7 @@ public enum UserErrorResult implements BaseErrorCode {
         return ErrorReasonDTO.builder()
                 .isSuccess(false)
                 .code(code)
+                .errorCode(errorCode)
                 .message(message)
                 .build();
     }
@@ -31,6 +33,7 @@ public enum UserErrorResult implements BaseErrorCode {
                 .isSuccess(false)
                 .httpStatus(httpStatus)
                 .code(code)
+                .errorCode(errorCode)
                 .message(message)
                 .build();
     }
