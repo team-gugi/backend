@@ -35,10 +35,10 @@ public class User {
     @Column(nullable=false)
     private String email;
 
-    @Column(nullable=false)
+    @Column
     private Integer gender;
 
-    @Column(nullable=false)
+    @Column
     private Integer age;
 
     @Builder.Default
