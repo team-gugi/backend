@@ -9,13 +9,14 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum ErrorStatus implements BaseErrorCode {
 
-    _INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,"500", "서버에서 요청을 처리 하는 동안 오류가 발생했습니다."),
-    _BAD_REQUEST(HttpStatus.BAD_REQUEST,"400", "입력 값이 잘못된 요청 입니다."),
-    _UNAUTHORIZED(HttpStatus.UNAUTHORIZED,"401", "유효하지 않은 인증 토큰입니다."),
-    _FORBIDDEN(HttpStatus.FORBIDDEN, "403", "금지된 요청 입니다.");
+    _INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "500", "서버에서 요청을 처리 하는 동안 오류가 발생했습니다."),
+    _BAD_REQUEST(HttpStatus.BAD_REQUEST,"400", "BAD_REQUEST", "입력 값이 잘못된 요청 입니다."),
+    _UNAUTHORIZED(HttpStatus.UNAUTHORIZED,"401", "UNAUTHORIZED", "유효하지 않은 인증 토큰입니다."),
+    _FORBIDDEN(HttpStatus.FORBIDDEN, "403", "FORBIDDEN", "금지된 요청 입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
+    private final String errorCode;
     private final String message;
 
     @Override
@@ -23,6 +24,7 @@ public enum ErrorStatus implements BaseErrorCode {
         return ErrorReasonDTO.builder()
                 .isSuccess(false)
                 .code(code)
+                .errorCode(errorCode)
                 .message(message)
                 .build();
     }
@@ -33,6 +35,7 @@ public enum ErrorStatus implements BaseErrorCode {
                 .isSuccess(false)
                 .httpStatus(httpStatus)
                 .code(code)
+                .errorCode(errorCode)
                 .message(message)
                 .build();
     }

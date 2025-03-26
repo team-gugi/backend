@@ -9,19 +9,21 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum PostErrorResult implements BaseErrorCode {
-    NOT_FOUND_DIARY(HttpStatus.NOT_FOUND, "404", "해당 직관일기 글이 존재하지 않습니다."),
-    NOT_FOUND_MATE_POST(HttpStatus.NOT_FOUND, "404", "해당 직관메이트 글이 존재하지 않습니다."),
-    UNAUTHORIZED_ACCESS(HttpStatus.FORBIDDEN, "403", "사용자가 해당 포스트에 접근권한이 없습니다."),
-    FORBIDDEN_OWN_POST(HttpStatus.FORBIDDEN, "403", "본인의 게시글에는 신청할 수 없습니다."),
-    ALREADY_APPLIED(HttpStatus.CONFLICT,"409", "이미 신청한 게시물입니다."),
-    NOT_FOUND_REQUEST(HttpStatus.NOT_FOUND, "404", "해당 신청 기록이 존재하지 않습니다."),
-    ALREADY_RESPONDED(HttpStatus.CONFLICT,"409", "이미 처리된 신청입니다."),
-    MAX_MEMBERS_REACHED(HttpStatus.CONFLICT,"409","더 이상 요청을 수락할 수 없습니다. 최대 멤버 수에 도달했습니다."),
-    RECRUITMENT_COMPLETED(HttpStatus.CONFLICT, "409", "이미 모집이 완료된 포스트입니다.");
-
+    NOT_FOUND_DIARY(HttpStatus.NOT_FOUND, "404", "NOT_FOUND_DIARY","해당 직관일기 글이 존재하지 않습니다."),
+    NOT_FOUND_MATE_POST(HttpStatus.NOT_FOUND, "404", "NOT_FOUND_MATE_POST", "해당 직관메이트 글이 존재하지 않습니다."),
+    UNAUTHORIZED_ACCESS(HttpStatus.FORBIDDEN, "403", "UNAUTHORIZED_ACCESS", "사용자가 해당 포스트에 접근권한이 없습니다."),
+    FORBIDDEN_OWN_POST(HttpStatus.FORBIDDEN, "403", "FORBIDDEN_OWN_POST","본인의 게시글에는 신청할 수 없습니다."),
+    ALREADY_APPLIED(HttpStatus.CONFLICT,"409", "ALREADY_APPLIED", "이미 신청한 게시물입니다."),
+    NOT_FOUND_REQUEST(HttpStatus.NOT_FOUND, "404", "NOT_FOUND_REQUEST", "해당 신청 기록이 존재하지 않습니다."),
+    ALREADY_RESPONDED(HttpStatus.CONFLICT,"409", "ALREADY_RESPONDED", "이미 처리된 신청입니다."),
+    MAX_MEMBERS_REACHED(HttpStatus.CONFLICT,"409","MAX_MEMBERS_REACHED", "더 이상 요청을 수락할 수 없습니다. 최대 멤버 수에 도달했습니다."),
+    RECRUITMENT_COMPLETED(HttpStatus.CONFLICT, "409", "RECRUITMENT_COMPLETED", "이미 모집이 완료된 포스트입니다."),
+    GENDER_REQUIRED(HttpStatus.BAD_REQUEST, "400", "GENDER_REQUIRED", "성별 정보가 필요합니다. 마이페이지에서 본인 인증을 진행해주세요."),
+    GENDER_MISMATCH(HttpStatus.BAD_REQUEST, "400", "GENDER_MISMATCH", "성별이 일치하지 않습니다. 해당 성별만 신청 가능합니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
+    private final String errorCode;
     private final String message;
 
     @Override
@@ -29,6 +31,7 @@ public enum PostErrorResult implements BaseErrorCode {
         return ErrorReasonDTO.builder()
                 .isSuccess(false)
                 .code(code)
+                .errorCode(errorCode)
                 .message(message)
                 .build();
     }
@@ -39,6 +42,7 @@ public enum PostErrorResult implements BaseErrorCode {
                 .isSuccess(false)
                 .httpStatus(httpStatus)
                 .code(code)
+                .errorCode(errorCode)
                 .message(message)
                 .build();
     }

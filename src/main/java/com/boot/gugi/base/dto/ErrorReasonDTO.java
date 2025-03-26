@@ -10,6 +10,6 @@ public class ErrorReasonDTO {
     private HttpStatus httpStatus;
     private final boolean isSuccess;
     private final String code;
+    private final String errorCode;
     private final String message;
 }
-
