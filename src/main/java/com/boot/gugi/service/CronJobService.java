@@ -168,7 +168,7 @@ public class CronJobService {
 
         for (TeamDTO.ScheduleRequest dto : scrapedData) {
             TeamSchedule newSchedule = convertToTeamSchedule(dto);
-            String key = getScheduleKey(newSchedule);
+            String key = newSchedule.getScheduleKey();
             newScheduleKeys.add(key);
 
             Optional<TeamSchedule> existingOpt = teamScheduleRepository.findByScheduleKey(key);
@@ -190,8 +190,8 @@ public class CronJobService {
         removeDeletedSchedules(newScheduleKeys);
     }
 
-    private String getScheduleKey(TeamSchedule teamSchedule) {
-        return teamSchedule.getDate() + "_" + teamSchedule.getSpecificDate() + "_" + teamSchedule.getGameTime() + "_" + teamSchedule.getHomeTeam() + "_" + teamSchedule.getAwayTeam();
+    private String getScheduleKey(TeamDTO.ScheduleRequest dto) {
+        return dto.getDate() + "_" + dto.getSpecificDate() + "_" + dto.getTime() + "_" + dto.getHomeTeam() + "_" + dto.getAwayTeam();
     }
 
     private boolean updateIfChanged(TeamSchedule existing, TeamSchedule updated) {
@@ -233,7 +233,9 @@ public class CronJobService {
 
     private TeamSchedule convertToTeamSchedule(TeamDTO.ScheduleRequest scheduleResponse) {
 
-        TeamSchedule schedule = TeamSchedule.builder()
+        String key = getScheduleKey(scheduleResponse);
+
+        return  TeamSchedule.builder()
                 .date(scheduleResponse.getDate())
                 .specificDate(scheduleResponse.getSpecificDate())
                 .homeTeam(scheduleResponse.getHomeTeam())
@@ -245,11 +247,7 @@ public class CronJobService {
                 .gameTime(scheduleResponse.getTime())
                 .stadium(scheduleResponse.getStadium())
                 .cancellationReason(scheduleResponse.getCancellationReason())
+                .scheduleKey(key)
                 .build();
-
-        String key = getScheduleKey(schedule);
-        schedule.setScheduleKey(key);
-
-        return schedule;
     }
 }
