@@ -17,6 +17,8 @@ import org.springframework.stereotype.Repository;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,154 +42,9 @@ public class RedisRepository {
     private final RedissonClient redissonClient;
     private final ObjectMapper objectMapper;
 
-    public void saveRank(TeamRank rankInfo) {
-        saveToRedis(TEAM_RANK_PREFIX + rankInfo.getTeamRank() , rankInfo, TEAM_RANK_EXPIRATION_TIME);
-    }
-
+    /*** Team ***/
     public void saveTeam(Team teamInfo) {
         saveToRedis(TEAM_CODE_PREFIX + teamInfo.getTeamCode(), teamInfo, null);
-    }
-
-    public void saveStadium(Stadium stadiumInfo) {
-        saveToRedis(STADIUM_CODE_PREFIX + stadiumInfo.getStadiumCode(), stadiumInfo, null);
-    }
-
-    private String getRedisKeySchedule(String date, String teamName) { return SCHEDULE_PREFIX + date + ":" + teamName;}
-
-    public void saveSchedule(TeamSchedule teamSchedule) {
-
-        String homeKey = getRedisKeySchedule(teamSchedule.getDate(), teamSchedule.getHomeTeam());
-        saveForSet(homeKey, teamSchedule);
-
-        String awayKey = getRedisKeySchedule(teamSchedule.getDate(), teamSchedule.getAwayTeam());
-        saveForSet(awayKey, teamSchedule);
-    }
-
-    public void saveFood(Food foodDetails, Integer stadiumCode) {
-        String foodInfoKey = FOOD_CODE_PREFIX + stadiumCode;
-        try {
-            String foodInfoJson = objectMapper.writeValueAsString(foodDetails);
-            SetOperations<String, String> setOperations = redisTemplate.opsForSet();
-            setOperations.add(foodInfoKey, foodInfoJson);
-        } catch (JsonProcessingException e) {
-            logError("FoodInfo", stadiumCode.toString(), e);
-        }
-    }
-
-    private <T> void saveToRedis(String key, T object, Long expirationTime) {
-        try {
-            String json = objectMapper.writeValueAsString(object);
-            ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
-            valueOperations.set(key, json);
-            if (expirationTime != null) {
-                redisTemplate.expire(key, expirationTime, TimeUnit.MILLISECONDS);
-            }
-        } catch (JsonProcessingException e) {
-            logError(object.getClass().getSimpleName(), key, e);
-        }
-    }
-
-    private void saveForSet(String key, TeamSchedule teamSchedule) {
-        try {
-            String jsonValue = objectMapper.writeValueAsString(teamSchedule);
-            redisTemplate.opsForSet().add(key, jsonValue);
-        } catch (Exception e) {
-            logError(teamSchedule.getClass().getSimpleName(), key, e);
-        }
-    }
-
-    public void deleteSchedule(TeamSchedule teamSchedule) {
-        String homeKey = getRedisKeySchedule(teamSchedule.getDate(), teamSchedule.getHomeTeam());
-        deleteFromSet(homeKey, teamSchedule);
-
-        String awayKey = getRedisKeySchedule(teamSchedule.getDate(), teamSchedule.getAwayTeam());
-        deleteFromSet(awayKey, teamSchedule);
-    }
-
-    private void deleteFromSet(String key, TeamSchedule teamSchedule) {
-        try {
-            String jsonValue = objectMapper.writeValueAsString(teamSchedule);
-            redisTemplate.opsForSet().remove(key, jsonValue);
-        } catch (Exception e) {
-            logger.error("Failed to process {} object in Redis. Key: {}. Error: {}", teamSchedule.getClass().getSimpleName(), key, e.getMessage());
-        }
-    }
-
-    private void logError(String objectType, String key, Exception e) {
-        logger.error("Failed to convert {} object to JSON. Key: {}, Error: {}", objectType, key, e.getMessage(), e);
-    }
-
-    public void updateRank(List<TeamRank> newScrapedData) {
-        RLock lock = redissonClient.getLock("teamRankLock");
-        try {
-            if (lock.tryLock(5, TimeUnit.SECONDS)) {
-                newScrapedData.forEach(data -> updateSingleRank(data));
-            } else {
-                logger.warn("Could not acquire lock for updating ranks.");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.error("Thread was interrupted while trying to acquire lock.", e);
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    private void updateSingleRank(TeamRank newData) {
-
-        int rank = newData.getTeamRank();
-        String teamRankKey = TEAM_RANK_PREFIX + rank;
-
-        String newTeamRankJson = convertObjectToJson(newData);
-        redisTemplate.opsForValue().set(teamRankKey, newTeamRankJson);
-    }
-
-    private String convertObjectToJson(TeamRank data) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        try {
-            return objectMapper.writeValueAsString(data);
-        } catch (JsonProcessingException e) {
-            logger.error("Error converting object to JSON", e);
-            return null;
-        }
-    }
-
-    public List<TeamDTO.RankRequest> findRank() {
-        List<TeamDTO.RankRequest> rankRequests = new ArrayList<>();
-        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
-
-        for (int i = 1; i <= 10; i++) {
-            String teamRankKey = TEAM_RANK_PREFIX + i;
-            String teamRankJson = valueOperations.get(teamRankKey);
-            if (teamRankJson != null) {
-                try {
-                    TeamDTO.RankRequest rankRequest = objectMapper.readValue(teamRankJson, TeamDTO.RankRequest.class);
-                    rankRequests.add(rankRequest);
-                } catch (JsonProcessingException e) {
-                    logger.error("Failed to convert JSON to TeamRank object for rank {}. Error: {}", i, e.getMessage(), e);
-                }
-            }
-        }
-        return rankRequests;
-    }
-
-    public List<TeamDTO.RankResponse> findRanks() {
-        List<TeamDTO.RankResponse> rankResponses = new ArrayList<>();
-        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
-
-        for (int i = 1; i <= 10; i++) {
-            String teamRankKey = TEAM_RANK_PREFIX + i;
-            String teamRankJson = valueOperations.get(teamRankKey);
-            if (teamRankJson != null) {
-                try {
-                    TeamDTO.RankResponse rankResponse = objectMapper.readValue(teamRankJson, TeamDTO.RankResponse.class);
-                    rankResponses.add(rankResponse);
-                } catch (JsonProcessingException e) {
-                    logger.error("Failed to convert JSON to TeamRank object for rank {}. Error: {}", i, e.getMessage(), e);
-                }
-            }
-        }
-        return rankResponses;
     }
 
     public TeamDTO.teamResponse findTeam(String teamCode) {
@@ -205,6 +62,11 @@ public class RedisRepository {
             }
         }
         return null;
+    }
+
+    /*** Stadium ***/
+    public void saveStadium(Stadium stadiumInfo) {
+        saveToRedis(STADIUM_CODE_PREFIX + stadiumInfo.getStadiumCode(), stadiumInfo, null);
     }
 
     public StadiumDTO.StadiumResponse findStadium(Integer stadiumCode) {
@@ -238,39 +100,78 @@ public class RedisRepository {
         return null;
     }
 
+    /*** Food ***/
+    public void saveFood(Food foodDetails, Integer stadiumCode) {
+        String foodInfoKey = FOOD_CODE_PREFIX + stadiumCode;
+        try {
+            String foodInfoJson = objectMapper.writeValueAsString(foodDetails);
+            SetOperations<String, String> setOperations = redisTemplate.opsForSet();
+            setOperations.add(foodInfoKey, foodInfoJson);
+        } catch (JsonProcessingException e) {
+            logError("FoodInfo", stadiumCode.toString(), e);
+        }
+    }
+
+    /*** RANK ***/
+    public void saveRank(TeamRank rankInfo) {
+        saveToRedis(TEAM_RANK_PREFIX + rankInfo.getRankKey() , rankInfo, TEAM_RANK_EXPIRATION_TIME);
+    }
+    public void deleteRank(TeamRank rank) {
+        redisTemplate.delete(TEAM_RANK_PREFIX + rank.getRankKey());
+    }
+
+    public List<TeamDTO.RankResponse> findRanks() {
+        List<TeamDTO.RankResponse> rankResponses = new ArrayList<>();
+        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
+
+        for (int i = 1; i <= 10; i++) {
+            String key = TEAM_RANK_PREFIX + i;
+            String json = valueOperations.get(key);
+            if (json == null) {
+                return Collections.emptyList();
+            }
+
+            try {
+                TeamDTO.RankResponse rank = objectMapper.readValue(json, TeamDTO.RankResponse.class);
+                rankResponses.add(rank);
+            } catch (JsonProcessingException e) {
+                logger.error("Redis JSON 파싱 실패: {}", e.getMessage());
+                return Collections.emptyList();
+            }
+        }
+
+        return rankResponses;
+    }
+
+    /*** SCHEDULE ***/
+    private String getRedisKeySchedule(String date, String teamName) { return SCHEDULE_PREFIX + date + ":" + teamName;}
+
+    public void saveSchedule(TeamSchedule schedule) {
+        String homeKey = getRedisKeySchedule(schedule.getDate(), schedule.getHomeTeam());
+        String awayKey = getRedisKeySchedule(schedule.getDate(), schedule.getAwayTeam());
+        saveForSet(homeKey, schedule);
+        saveForSet(awayKey, schedule);
+    }
+
+    public void deleteSchedule(TeamSchedule schedule) {
+        String homeKey = getRedisKeySchedule(schedule.getDate(), schedule.getHomeTeam());
+        String awayKey = getRedisKeySchedule(schedule.getDate(), schedule.getAwayTeam());
+        deleteFromSet(homeKey, schedule);
+        deleteFromSet(awayKey, schedule);
+    }
+
     public List<TeamDTO.ScheduleResponse> findTeamSchedule(String teamCode) {
         List<TeamDTO.ScheduleResponse> scheduleList = new ArrayList<>();
 
         for (int year = 2024; year <= 2025; year++) {
             for (int month = 1; month <= 12; month++) {
                 String date = String.format("%04d.%02d", year, month);
-                String key = getRedisKeySchedule(date, teamCode);
+                Set<TeamDTO.SpecificSchedule> schedules = getSchedulesForMonth(date, teamCode);
 
                 TeamDTO.ScheduleResponse scheduleResponse = new TeamDTO.ScheduleResponse();
                 scheduleResponse.setDate(date);
-                Set<TeamDTO.SpecificSchedule> specificSchedules = new HashSet<>();
+                scheduleResponse.setSpecificSchedule(schedules);
 
-                Set<String> jsonSchedules = redisTemplate.opsForSet().members(key);
-                if (jsonSchedules != null && !jsonSchedules.isEmpty()) {
-
-                    for (String jsonSchedule : jsonSchedules) {
-                        try {
-                            TeamSchedule teamSchedule = objectMapper.readValue(jsonSchedule, TeamSchedule.class);
-                            TeamDTO.SpecificSchedule specificSchedule = convertToSpecificSchedule(teamSchedule, teamCode);
-                            specificSchedules.add(specificSchedule);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                } else {
-                    List<TeamSchedule> teamSchedules = teamScheduleRepository.findByDateAndTeam(date, teamCode);
-                    for (TeamSchedule teamSchedule : teamSchedules) {
-                        TeamDTO.SpecificSchedule specificSchedule = convertToSpecificSchedule(teamSchedule, teamCode);
-                        specificSchedules.add(specificSchedule);
-                    }
-
-                }
-                scheduleResponse.setSpecificSchedule(specificSchedules);
                 scheduleList.add(scheduleResponse);
             }
         }
@@ -278,24 +179,83 @@ public class RedisRepository {
         return scheduleList;
     }
 
-    private TeamDTO.SpecificSchedule convertToSpecificSchedule(TeamSchedule teamSchedule, String teamCode) {
-        TeamDTO.SpecificSchedule specificSchedule = new TeamDTO.SpecificSchedule();
+    private Set<TeamDTO.SpecificSchedule> getSchedulesForMonth(String date, String teamCode) {
+        String redisKey = getRedisKeySchedule(date, teamCode);
+        Set<String> redisData = redisTemplate.opsForSet().members(redisKey);
 
-        specificSchedule.setSpecificDate(teamSchedule.getSpecificDate());
-        specificSchedule.setHomeTeam(teamSchedule.getHomeTeam());
-        specificSchedule.setAwayTeam(teamSchedule.getAwayTeam());
-        specificSchedule.setHomeScore(teamSchedule.getHomeScore());
-        specificSchedule.setAwayScore(teamSchedule.getAwayScore());
-        specificSchedule.setTime(teamSchedule.getGameTime());
-        specificSchedule.setStadium(teamSchedule.getStadium());
-        specificSchedule.setCancellationReason(teamSchedule.getCancellationReason());
+        Set<TeamDTO.SpecificSchedule> result = new LinkedHashSet<>();
 
-        if (teamCode.equals(teamSchedule.getHomeTeam())) {
-            specificSchedule.setLogoUrl(teamSchedule.getAwayImg());
+        if (redisData != null && !redisData.isEmpty()) {
+            redisData.stream()
+                    .map(this::parseJsonToSchedule)
+                    .filter(Objects::nonNull)
+                    .map(schedule -> convertToSpecificSchedule(schedule, teamCode))
+                    .forEach(result::add);
         } else {
-            specificSchedule.setLogoUrl(teamSchedule.getHomeImg());
+            List<TeamSchedule> dbSchedules = teamScheduleRepository.findByDateAndTeam(date, teamCode);
+            dbSchedules.stream()
+                    .map(schedule -> convertToSpecificSchedule(schedule, teamCode))
+                    .forEach(result::add);
         }
 
-        return specificSchedule;
+        return result;
+    }
+
+    private TeamSchedule parseJsonToSchedule(String json) {
+        try {
+            return objectMapper.readValue(json, TeamSchedule.class);
+        } catch (IOException e) {
+            logger.error("Failed to parse JSON to TeamSchedule: {}", json, e);
+            return null;
+        }
+    }
+
+    private TeamDTO.SpecificSchedule convertToSpecificSchedule(TeamSchedule schedule, String teamCode) {
+        return TeamDTO.SpecificSchedule.builder()
+                .specificDate(schedule.getSpecificDate())
+                .homeTeam(schedule.getHomeTeam())
+                .awayTeam(schedule.getAwayTeam())
+                .homeScore(schedule.getHomeScore())
+                .awayScore(schedule.getAwayScore())
+                .time(schedule.getGameTime())
+                .stadium(schedule.getStadium())
+                .cancellationReason(schedule.getCancellationReason())
+                .logoUrl(teamCode.equals(schedule.getHomeTeam()) ? schedule.getAwayImg() : schedule.getHomeImg())
+                .build();
+    }
+
+    /*** HELPER METHODS ***/
+    private <T> void saveToRedis(String key, T data, Long expirationTime) {
+        try {
+            String json = objectMapper.writeValueAsString(data);
+            redisTemplate.opsForValue().set(key, json);
+            if (expirationTime != null) {
+                redisTemplate.expire(key, expirationTime, TimeUnit.MILLISECONDS);
+            }
+        } catch (JsonProcessingException e) {
+            logError(data.getClass().getSimpleName(), key, e);
+        }
+    }
+
+    private void saveForSet(String key, TeamSchedule schedule) {
+        try {
+            String json = objectMapper.writeValueAsString(schedule);
+            redisTemplate.opsForSet().add(key, json);
+        } catch (JsonProcessingException e) {
+            logError("TeamSchedule", key, e);
+        }
+    }
+
+    private void deleteFromSet(String key, TeamSchedule schedule) {
+        try {
+            String json = objectMapper.writeValueAsString(schedule);
+            redisTemplate.opsForSet().remove(key, json);
+        } catch (JsonProcessingException e) {
+            logError("TeamSchedule", key, e);
+        }
+    }
+
+    private void logError(String type, String key, Exception e) {
+        logger.error("Failed to process Redis operation. Type: {}, Key: {}, Error: {}", type, key, e.getMessage(), e);
     }
 }

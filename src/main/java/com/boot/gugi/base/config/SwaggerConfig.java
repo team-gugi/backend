@@ -13,8 +13,8 @@ import org.springframework.context.annotation.Configuration;
 
 @OpenAPIDefinition(
         servers = {
-                @Server(url = "https://www.team-gugi.site", description = "gugi https 서버입니다."),
-                @Server(url = "http://www.team-gugi.site", description = "gugi http 서버입니다."),
+                @Server(url = "https://api.team-gugi.site", description = "gugi https 서버입니다."),
+                @Server(url = "http://api.team-gugi.site", description = "gugi http 서버입니다."),
                 @Server(url = "http://localhost:8080", description = "gugi local 서버입니다.")
         }
 )
