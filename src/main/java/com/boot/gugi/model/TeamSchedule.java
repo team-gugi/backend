@@ -46,4 +46,7 @@ public class TeamSchedule {
 
     @Column
     private String cancellationReason;
+
+    @Column(unique = true)
+    private String scheduleKey;
 }

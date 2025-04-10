@@ -20,9 +20,6 @@ public class TeamRank {
     private String team;
 
     @Column(nullable=false)
-    private String teamLogo;
-
-    @Column(nullable=false)
     private Integer teamRank;
 
     @Column(nullable=false)
@@ -37,9 +34,12 @@ public class TeamRank {
     @Column(nullable=false)
     private Integer draw;
 
-    @Column(nullable=false)
+    @Column(nullable=false, precision = 4, scale = 3)
     private BigDecimal winningRate;
 
-    @Column(nullable=false)
-    private Integer difference;
+    @Column(nullable=false, precision = 4, scale = 1)
+    private BigDecimal difference;
+
+    @Column(unique = true)
+    private String rankKey;
 }

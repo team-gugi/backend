@@ -1,6 +1,7 @@
 package com.boot.gugi.base.dto;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -20,7 +21,7 @@ public class TeamDTO {
         private Integer lose;
         private Integer draw;
         private BigDecimal winningRate;
-        private Integer difference;
+        private BigDecimal difference;
     }
 
     @Data
@@ -29,13 +30,12 @@ public class TeamDTO {
     public static class RankResponse {
         private Integer teamRank;
         private String team;
-        private String teamLogo;
         private Integer game;
         private Integer win;
         private Integer lose;
         private Integer draw;
         private BigDecimal winningRate;
-        private Integer difference;
+        private BigDecimal difference;
     }
 
     @Data
@@ -64,6 +64,7 @@ public class TeamDTO {
     }
 
     @Data
+    @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class SpecificSchedule {

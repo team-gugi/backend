@@ -31,7 +31,7 @@ public class MainController {
         return ApiResponse.onSuccess(SuccessStatus._GET, teamRank);
     }
 
-    @PostMapping(value = "/kbo-ranking", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    /*@PostMapping(value = "/kbo-ranking", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<TeamRank>> saveRank(
             HttpServletResponse response, @RequestPart @Valid TeamDTO.RankRequest rankRequest,
             @RequestPart(value = "teamLogo", required = false) MultipartFile teamLogo) {
@@ -39,5 +39,5 @@ public class MainController {
         TeamRank teamRank = mainService.saveRank(rankRequest, teamLogo);
 
         return ApiResponse.onSuccess(SuccessStatus._OK, teamRank);
-    }
+    }*/
 }
