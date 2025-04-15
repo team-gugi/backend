@@ -105,7 +105,7 @@ public class CronJobService {
     }
 
     private String getRankKey(TeamDTO.RankRequest dto) {
-        return String.valueOf(dto.getTeamRank());
+        return dto.getTeam();
     }
 
     private boolean updateIfChanged(TeamRank existing, TeamRank updated) {
