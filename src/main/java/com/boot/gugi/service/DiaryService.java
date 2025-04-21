@@ -60,7 +60,9 @@ public class DiaryService {
             throw new PostException(PostErrorResult.UNAUTHORIZED_ACCESS);
         }
 
-        String uploadedDiaryUrl = s3Service.uploadImg(gameImg, null);
+        String uploadedDiaryUrl = (gameImg != null && !gameImg.isEmpty())
+                ? s3Service.uploadImg(gameImg, null)
+                : existingDiary.getGameImg();
         GameResultEnum gameResult = determineGameResult(postInfo.getHomeScore(), postInfo.getAwayScore());
 
         updateUserStatistics(userId, gameResult, existingDiary.getGameResult(), false);
