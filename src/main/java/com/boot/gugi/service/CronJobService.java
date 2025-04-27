@@ -48,18 +48,18 @@ public class CronJobService {
         }
     }
 
-    @Scheduled(cron = "0 50 23 * * 2-7")
+    @Scheduled(cron = "0 50 23 * * *")
     public void handleExpiredPostsCron() {
         handleExpiredPosts(LocalDate.now().plusDays(1));
     }
 
-    @Scheduled(cron = "0 */1 15-23 * * 2-7")
+    @Scheduled(cron = "0 */1 15-23 * * *")
     @Transactional
     public void handleRankCron() {
         updateRank();
     }
 
-    @Scheduled(cron = "0 */10 * * * 2-7")
+    @Scheduled(cron = "0 */15 15-23 * * *")
     @Transactional
     public void handleScheduleCron() {
         updateSchedule();
