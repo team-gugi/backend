@@ -3,21 +3,17 @@ package com.boot.gugi.repository;
 import com.boot.gugi.base.dto.StadiumDTO;
 import com.boot.gugi.base.dto.TeamDTO;
 import com.boot.gugi.model.*;
+import com.boot.gugi.service.RedisLockHelper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.SetOperations;
-import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.*;
 import org.springframework.stereotype.Repository;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,10 +32,11 @@ public class RedisRepository {
     private static final String FOOD_CODE_PREFIX = "food-code:";
     private static final String SCHEDULE_PREFIX = "schedule:";
 
-    private final TeamRankRepository teamRankRepository;
+    private static final String RANK_REDIS_LOCK_KEY = "lock:rankSyncRedisWithMongo";
+
     private final TeamScheduleRepository teamScheduleRepository;
     private final RedisTemplate<String, String> redisTemplate;
-    private final RedissonClient redissonClient;
+    private final RedisLockHelper redisLockHelper;
     private final ObjectMapper objectMapper;
 
     /*** Team ***/
@@ -113,8 +110,10 @@ public class RedisRepository {
     }
 
     /*** RANK ***/
+    private String getRedisKeyRank(String rankKey) { return TEAM_RANK_PREFIX + rankKey;}
+
     public void saveRank(TeamRank rankInfo) {
-        saveToRedis(TEAM_RANK_PREFIX + rankInfo.getRankKey() , rankInfo, TEAM_RANK_EXPIRATION_TIME);
+        saveToRedis(getRedisKeyRank(rankInfo.getRankKey()) , rankInfo, TEAM_RANK_EXPIRATION_TIME);
     }
     public void deleteRank(TeamRank rank) {
         redisTemplate.delete(TEAM_RANK_PREFIX + rank.getRankKey());
@@ -124,23 +123,81 @@ public class RedisRepository {
         List<TeamDTO.RankResponse> rankResponses = new ArrayList<>();
         ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
 
-        for (int i = 1; i <= 10; i++) {
-            String key = TEAM_RANK_PREFIX + i;
-            String json = valueOperations.get(key);
-            if (json == null) {
-                return Collections.emptyList();
-            }
+        String pattern = TEAM_RANK_PREFIX + "*";
+        Cursor<byte[]> cursor = redisTemplate.getConnectionFactory()
+                .getConnection()
+                .scan(ScanOptions.scanOptions().match(pattern).build());
 
-            try {
-                TeamDTO.RankResponse rank = objectMapper.readValue(json, TeamDTO.RankResponse.class);
-                rankResponses.add(rank);
-            } catch (JsonProcessingException e) {
-                logger.error("Redis JSON 파싱 실패: {}", e.getMessage());
-                return Collections.emptyList();
+        while (cursor.hasNext()) {
+            String key = new String(cursor.next());
+            String json = valueOperations.get(key);
+
+            if (json != null) {
+                try {
+                    TeamDTO.RankResponse rank = objectMapper.readValue(json, TeamDTO.RankResponse.class);
+                    rankResponses.add(rank);
+                } catch (JsonProcessingException e) {
+                    logger.error("Redis JSON 파싱 실패: {}", e.getMessage());
+                    return Collections.emptyList();
+                }
             }
         }
 
         return rankResponses;
+    }
+
+    public void syncRankToRedis(List<TeamRank> dbRanks, Set<String> currentRedisKeys) {
+        redisLockHelper.executeWithLock(
+                RANK_REDIS_LOCK_KEY,
+                5,
+                10,
+                () -> {
+                    doSyncRankToRedis(dbRanks, currentRedisKeys);
+                    return null;
+                }
+        );
+    }
+
+    public void doSyncRankToRedis(List<TeamRank> dbRanks, Set<String> currentRedisKeys) {
+        logger.info("Rank Redis 동기화 시작. MongoDB 데이터 {}개.", dbRanks.size());
+
+        if (currentRedisKeys != null && !currentRedisKeys.isEmpty()) {
+            try {
+                Long deletedCount = redisTemplate.delete(currentRedisKeys);
+                logger.info("기존 Redis 데이터 {}개 삭제 완료.", deletedCount != null ? deletedCount : 0);
+            } catch (Exception e) {
+                logger.error("Redis 기존 키 삭제 중 오류 발생", e);
+            }
+        } else {
+            logger.info("Redis에 기존 데이터 없음. 삭제 단계 건너뛰기.");
+        }
+
+        if (dbRanks != null && !dbRanks.isEmpty()) {
+            Map<String, String> dataToSave = new HashMap<>();
+            for (TeamRank rank : dbRanks) {
+                try {
+                    String rankJson = objectMapper.writeValueAsString(rank);
+                    dataToSave.put(getRedisKeyRank(rank.getRankKey()), rankJson);
+                } catch (JsonProcessingException e) {
+                    logger.error("TeamRank 객체를 JSON으로 변환 중 오류 발생: {}", rank, e);
+                }
+            }
+
+            if (!dataToSave.isEmpty()) {
+                try {
+                    redisTemplate.opsForValue().multiSet(dataToSave);
+                    logger.info("Redis에 새로운 데이터 {}개 일괄 저장 완료.", dataToSave.size());
+                } catch (Exception e) {
+                    logger.error("Redis 새 데이터 일괄 저장 중 오류 발생", e);
+                }
+            } else {
+                logger.info("JSON 변환에 성공한 데이터가 없어 Redis에 저장할 데이터가 없습니다.");
+            }
+        } else {
+            logger.info("MongoDB에 데이터가 없어 Redis에 저장할 데이터가 없습니다.");
+        }
+
+        logger.info("Rank Redis 동기화 완료.");
     }
 
     /*** SCHEDULE ***/

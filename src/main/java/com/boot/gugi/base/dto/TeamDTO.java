@@ -1,5 +1,6 @@
 package com.boot.gugi.base.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,6 +35,7 @@ public class TeamDTO {
         private Integer win;
         private Integer lose;
         private Integer draw;
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "#0.000")
         private BigDecimal winningRate;
         private BigDecimal difference;
     }

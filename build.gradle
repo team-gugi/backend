@@ -63,6 +63,8 @@ dependencies {
 	//Selenium
 	implementation 'org.seleniumhq.selenium:selenium-java'
 	implementation 'io.github.bonigarcia:webdrivermanager:5.9.2'
+	//Redisson
+	implementation 'org.redisson:redisson-spring-boot-starter:3.25.2'
 }
 
 def generated = 'build/generated'
