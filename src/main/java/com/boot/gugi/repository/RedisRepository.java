@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ public class RedisRepository {
     private static final String SCHEDULE_PREFIX = "schedule:";
 
     private static final String RANK_REDIS_LOCK_KEY = "lock:rankSyncRedisWithMongo";
+    private static final String SCHEDULE_REDIS_LOCK_KEY = "lock:scheduleSyncRedisWithMongo";
 
     private final TeamScheduleRepository teamScheduleRepository;
     private final RedisTemplate<String, String> redisTemplate;
@@ -206,15 +208,15 @@ public class RedisRepository {
     public void saveSchedule(TeamSchedule schedule) {
         String homeKey = getRedisKeySchedule(schedule.getDate(), schedule.getHomeTeam());
         String awayKey = getRedisKeySchedule(schedule.getDate(), schedule.getAwayTeam());
-        saveForSet(homeKey, schedule);
-        saveForSet(awayKey, schedule);
+        saveForHash(homeKey, schedule);
+        saveForHash(awayKey, schedule);
     }
 
     public void deleteSchedule(TeamSchedule schedule) {
         String homeKey = getRedisKeySchedule(schedule.getDate(), schedule.getHomeTeam());
         String awayKey = getRedisKeySchedule(schedule.getDate(), schedule.getAwayTeam());
-        deleteFromSet(homeKey, schedule);
-        deleteFromSet(awayKey, schedule);
+        deleteFromHash(homeKey, schedule);
+        deleteFromHash(awayKey, schedule);
     }
 
     public List<TeamDTO.ScheduleResponse> findTeamSchedule(String teamCode) {
@@ -223,12 +225,28 @@ public class RedisRepository {
         for (int year = 2024; year <= 2025; year++) {
             for (int month = 1; month <= 12; month++) {
                 String date = String.format("%04d.%02d", year, month);
-                Set<TeamDTO.SpecificSchedule> schedules = getSchedulesForMonth(date, teamCode);
+                String redisKey = getRedisKeySchedule(date, teamCode);
+
+                Long redisCount = redisTemplate.opsForHash().size(redisKey);
+                Long mongoCount = teamScheduleRepository.countByDateAndTeam(date, teamCode);
+
+                Set<TeamDTO.SpecificSchedule> specificSchedules;
+
+                if (!redisCount.equals(mongoCount)) {
+                    logger.info("Schedule Redis 동기화 필요: {} / {}. MongoDB: {}개, Redis: {}개", teamCode, date, mongoCount, redisCount);
+                    List<TeamSchedule> dbSchedules = teamScheduleRepository.findByDateAndTeam(date, teamCode);
+                    syncScheduleToRedis(dbSchedules, redisKey);
+
+                    specificSchedules = dbSchedules.stream()
+                            .map(schedule -> convertToSpecificSchedule(schedule, teamCode))
+                            .collect(Collectors.toCollection(LinkedHashSet::new));
+                } else {
+                    specificSchedules = getSchedulesForMonth(date, teamCode);
+                }
 
                 TeamDTO.ScheduleResponse scheduleResponse = new TeamDTO.ScheduleResponse();
                 scheduleResponse.setDate(date);
-                scheduleResponse.setSpecificSchedule(schedules);
-
+                scheduleResponse.setSpecificSchedule(specificSchedules);
                 scheduleList.add(scheduleResponse);
             }
         }
@@ -238,24 +256,72 @@ public class RedisRepository {
 
     private Set<TeamDTO.SpecificSchedule> getSchedulesForMonth(String date, String teamCode) {
         String redisKey = getRedisKeySchedule(date, teamCode);
-        Set<String> redisData = redisTemplate.opsForSet().members(redisKey);
+        Map<Object, Object> redisData = redisTemplate.opsForHash().entries(redisKey);
 
         Set<TeamDTO.SpecificSchedule> result = new LinkedHashSet<>();
 
-        if (redisData != null && !redisData.isEmpty()) {
-            redisData.stream()
-                    .map(this::parseJsonToSchedule)
-                    .filter(Objects::nonNull)
-                    .map(schedule -> convertToSpecificSchedule(schedule, teamCode))
-                    .forEach(result::add);
-        } else {
-            List<TeamSchedule> dbSchedules = teamScheduleRepository.findByDateAndTeam(date, teamCode);
-            dbSchedules.stream()
-                    .map(schedule -> convertToSpecificSchedule(schedule, teamCode))
-                    .forEach(result::add);
-        }
+        redisData.values().stream()
+                .map(String.class::cast)
+                .map(this::parseJsonToSchedule)
+                .filter(Objects::nonNull)
+                .map(schedule -> convertToSpecificSchedule(schedule, teamCode))
+                .forEach(result::add);
 
         return result;
+    }
+
+    public void syncScheduleToRedis(List<TeamSchedule> dbSchedules, String currentRedisKey) {
+        redisLockHelper.executeWithLock(
+                SCHEDULE_REDIS_LOCK_KEY,
+                10,
+                60,
+                () -> {
+                    doSyncScheduleToRedis(dbSchedules, currentRedisKey);
+                    return null;
+                }
+        );
+    }
+
+    public void doSyncScheduleToRedis(List<TeamSchedule> dbSchedules, String currentRedisKey) {
+        logger.info("Schedule Redis 동기화 시작. MongoDB 데이터 {}개.", dbSchedules.size());
+
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(currentRedisKey))) {
+            try {
+                redisTemplate.delete(currentRedisKey);
+                logger.info("기존 Redis schedule 데이터 삭제 완료. {}", currentRedisKey);
+            } catch (Exception e) {
+                logger.error("Redis 기존 키 삭제 중 오류 발생", e);
+            }
+        } else {
+            logger.info("Redis에 기존 데이터 없음. 삭제 단계 건너뛰기.");
+        }
+
+        if (dbSchedules != null && !dbSchedules.isEmpty()) {
+            try {
+                Map<String, String> redisMap = dbSchedules.stream()
+                        .collect(Collectors.toMap(
+                                TeamSchedule::getScheduleKey,
+                                schedule -> {
+                                    try {
+                                        return objectMapper.writeValueAsString(schedule);
+                                    } catch (JsonProcessingException e) {
+                                        logger.error("JSON 직렬화 오류: {}", schedule, e);
+                                        return null;
+                                    }
+                                },
+                                (existing, replacement) -> replacement
+                        ));
+
+                redisTemplate.opsForHash().putAll(currentRedisKey, redisMap);
+                logger.info("Redis에 새 hash 데이터 {}개 저장 완료.", redisMap.size());
+            } catch (Exception e) {
+                logger.error("Redis 새 데이터 일괄 저장 중 오류 발생", e);
+            }
+        } else {
+            logger.info("MongoDB에 데이터가 없어 Redis에 저장할 데이터가 없습니다.");
+        }
+
+        logger.info("Schedule Redis 동기화 완료.");
     }
 
     private TeamSchedule parseJsonToSchedule(String json) {
@@ -291,6 +357,23 @@ public class RedisRepository {
             }
         } catch (JsonProcessingException e) {
             logError(data.getClass().getSimpleName(), key, e);
+        }
+    }
+
+    private void saveForHash(String key, TeamSchedule schedule) {
+        try {
+            String json = objectMapper.writeValueAsString(schedule);
+            redisTemplate.opsForHash().put(key, schedule.getScheduleKey(), json);
+        } catch (JsonProcessingException e) {
+            logError("TeamSchedule", key, e);
+        }
+    }
+
+    private void deleteFromHash(String key, TeamSchedule schedule) {
+        try {
+            redisTemplate.opsForHash().delete(key, schedule.getScheduleKey());
+        } catch (Exception e) {
+            logError("DeleteFromHash", key + " - " + schedule.getScheduleKey(), e);
         }
     }
 

@@ -18,4 +18,7 @@ public interface TeamScheduleRepository extends JpaRepository<TeamSchedule, Long
 
     @Query("SELECT t FROM TeamSchedule t WHERE t.date = :date AND (t.homeTeam = :team OR t.awayTeam = :team)")
     List<TeamSchedule> findByDateAndTeam(@Param("date") String date, @Param("team") String team);
+
+    @Query("SELECT COUNT(t) FROM TeamSchedule t WHERE t.date = :date AND (t.homeTeam = :team OR t.awayTeam = :team)")
+    Long countByDateAndTeam(@Param("date") String date, @Param("team") String team);
 }
