@@ -1,10 +1,8 @@
 package com.boot.gugi.base.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.Set;
@@ -26,6 +24,7 @@ public class TeamDTO {
     }
 
     @Data
+    @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RankResponse {
@@ -95,6 +94,7 @@ public class TeamDTO {
     }
 
     @Data
+    @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class teamResponse {

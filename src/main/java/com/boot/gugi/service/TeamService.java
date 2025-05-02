@@ -27,8 +27,10 @@ public class TeamService {
             Team team = teamRepository.findByTeamCode(teamCode);
 
             if (team == null) {
-                throw new EntityNotFoundException("Team not found for code: " + teamCode);
+                throw new EntityNotFoundException("Team not found for code in DB: " + teamCode);
             }
+
+            redisRepository.syncTeamToRedis(team);
             teamInfo = convertToTeamDetailsDTO(team);
         }
         return teamInfo;

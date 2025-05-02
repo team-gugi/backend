@@ -1,14 +1,13 @@
 package com.boot.gugi.base.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.Set;
 
 public class StadiumDTO {
 
     @Data
+    @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class StadiumRequest {
@@ -22,10 +21,18 @@ public class StadiumDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class StadiumResponse {
+        private StadiumInfo stadiumInfo;
+        private Set<FoodResponse> foodList;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StadiumInfo {
         private String stadiumName;
         private String stadiumLocation;
         private String teamName;
-        private Set<FoodResponse> foodList;
     }
 
     @Data
@@ -38,6 +45,7 @@ public class StadiumDTO {
     }
 
     @Data
+    @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class FoodResponse {

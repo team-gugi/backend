@@ -17,13 +17,13 @@ public class StadiumFood {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "food_id", nullable = false, unique = true)
     @JsonBackReference
     private Food food;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "stadium_code", nullable = false)
-    @JsonBackReference
+    @JsonBackReference("stadium-food")
     private Stadium stadium;
 }

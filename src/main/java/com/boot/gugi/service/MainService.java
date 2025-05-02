@@ -40,6 +40,7 @@ public class MainService {
                     .collect(Collectors.toList());
         } else {
             List<TeamDTO.RankResponse> ranks = redisRepository.findRanks();
+            logger.info("* Redis * 랭킹 정보 조회 성공.");
 
             return ranks.stream()
                     .filter(rank -> isValidRank(rank.getTeamRank()))

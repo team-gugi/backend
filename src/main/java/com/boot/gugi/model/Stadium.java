@@ -8,7 +8,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -29,7 +30,7 @@ public class Stadium {
     private String teamName;
 
     @OneToMany(mappedBy = "stadium", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
+    @JsonManagedReference("stadium-food")
     private final Set<StadiumFood> stadiumFoods = new HashSet<>();
 
     public Set<Food> getFoods() {

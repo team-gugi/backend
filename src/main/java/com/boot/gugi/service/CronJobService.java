@@ -4,10 +4,7 @@ import com.boot.gugi.base.dto.TeamDTO;
 import com.boot.gugi.model.MatePost;
 import com.boot.gugi.model.TeamRank;
 import com.boot.gugi.model.TeamSchedule;
-import com.boot.gugi.repository.MatePostRepository;
-import com.boot.gugi.repository.RedisRepository;
-import com.boot.gugi.repository.TeamRankRepository;
-import com.boot.gugi.repository.TeamScheduleRepository;
+import com.boot.gugi.repository.*;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +39,9 @@ public class CronJobService {
         try {
             handleExpiredPosts(LocalDate.now());
             updateRank();
+            handleTeamCron();
+            handleStadiumCron();
+            handleFoodCron();
             updateSchedule();
         } catch (Exception e) {
             logger.error("초기화 중 오류 발생", e);
@@ -49,6 +49,7 @@ public class CronJobService {
     }
 
     @Scheduled(cron = "0 50 23 * * *")
+    @Transactional
     public void handleExpiredPostsCron() {
         handleExpiredPosts(LocalDate.now().plusDays(1));
     }
@@ -64,6 +65,18 @@ public class CronJobService {
     public void handleScheduleCron() {
         updateSchedule();
     }
+
+    @Scheduled(cron = "0 0 15 * * *")
+    @Transactional
+    public void handleTeamCron() { redisRepository.cronSyncAllTeamsToRedis(); }
+
+    @Scheduled(cron = "0 0 15 * * *")
+    @Transactional
+    public void handleStadiumCron() { redisRepository.cronSyncAllStadiumsToRedis(); }
+
+    @Scheduled(cron = "0 0 15 * * *")
+    @Transactional
+    public void handleFoodCron() { redisRepository.cronSyncAllFoodsToRedis(); }
 
     private void handleExpiredPosts(LocalDate date) {
         List<MatePost> expiredPosts = matePostRepository.findByGameDateBefore(date);
@@ -89,15 +102,20 @@ public class CronJobService {
 
             if (existingOpt.isPresent()) {
                 TeamRank existing = existingOpt.get();
+
                 if (updateIfChanged(existing, newRank)) {
                     teamRankRepository.save(existing);
-                    redisRepository.saveRank(newRank);
-                    logger.info("Updated rank: {}", existing);
+                    logger.info("[Rank] MongoDB 갱신: {}", key);
+                }
+
+                if (redisRepository.isSyncRequiredRank(existing, key)) {
+                    redisRepository.saveRank(existing);
+                    logger.info("[Rank] Redis 갱신: {}", key);
                 }
             } else {
                 teamRankRepository.save(newRank);
                 redisRepository.saveRank(newRank);
-                logger.info("New rank saved: {}", newRank);
+                logger.info("[Rank] 새로 저장 in MongoDB, Redis: {}", newRank);
             }
         }
 
@@ -183,15 +201,20 @@ public class CronJobService {
 
             if (existingOpt.isPresent()) {
                 TeamSchedule existing = existingOpt.get();
+
                 if (updateIfChanged(existing, newSchedule)) {
                     teamScheduleRepository.save(existing);
+                    logger.info("[Schedule] MongoDB 갱신: {}", existing.getScheduleKey());
+                }
+
+                if (redisRepository.isSyncRequiredSchedule(existing, newSchedule, key)) {
                     redisRepository.saveSchedule(existing);
-                    logger.info("Updated schedule: {}", existing);
+                    logger.info("[Schedule] Redis 갱신: {}", existing.getScheduleKey());
                 }
             } else {
                 teamScheduleRepository.save(newSchedule);
                 redisRepository.saveSchedule(newSchedule);
-                logger.info("New schedule saved: {}", newSchedule);
+                logger.info("[Schedule] 새로 저장 in MongoDB, Redis: {}", newSchedule);
             }
         }
 

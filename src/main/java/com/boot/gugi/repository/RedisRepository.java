@@ -33,10 +33,16 @@ public class RedisRepository {
     private static final String FOOD_CODE_PREFIX = "food-code:";
     private static final String SCHEDULE_PREFIX = "schedule:";
 
+    private static final String TEAM_REDIS_LOCK_KEY = "lock:teamSyncRedisWithMongo";
+    private static final String STADIUM_REDIS_LOCK_KEY = "lock:stadiumSyncRedisWithMongo";
+    private static final String FOOD_REDIS_LOCK_KEY = "lock:foodSyncRedisWithMongo";
     private static final String RANK_REDIS_LOCK_KEY = "lock:rankSyncRedisWithMongo";
     private static final String SCHEDULE_REDIS_LOCK_KEY = "lock:scheduleSyncRedisWithMongo";
 
     private final TeamScheduleRepository teamScheduleRepository;
+    private final TeamRepository teamRepository;
+    private final StadiumRepository stadiumRepository;
+    private final StadiumFoodRepository stadiumFoodRepository;
     private final RedisTemplate<String, String> redisTemplate;
     private final RedisLockHelper redisLockHelper;
     private final ObjectMapper objectMapper;
@@ -53,14 +59,41 @@ public class RedisRepository {
 
         if (teamInfoJson != null) {
             try {
-                TeamDTO.teamResponse teamDetails = objectMapper.readValue(teamInfoJson, TeamDTO.teamResponse.class);
-                logger.info("I found it. TeamCode: {}", teamCode);
-                return teamDetails;
+                Team teamDetails = objectMapper.readValue(teamInfoJson, Team.class);
+                logger.info("* Redis * 팀 정보 조회 성공. TeamCode: {}", teamCode);
+                return TeamDTO.teamResponse.builder()
+                        .teamCode(teamDetails.getTeamCode())
+                        .teamLogo(teamDetails.getTeamLogo())
+                        .teamName(teamDetails.getTeamName())
+                        .description(teamDetails.getDescription())
+                        .instagram(teamDetails.getInstagram())
+                        .youtube(teamDetails.getYoutube())
+                        .ticketShop(teamDetails.getTicketShop())
+                        .mdShop(teamDetails.getMdShop())
+                        .build();
             } catch (JsonProcessingException e) {
-                logger.error("Failed to convert JSON to TeamInfo object. TeamCode: {}, Error: {}", teamCode, e.getMessage(), e);
+                logger.error("Redis JSON 파싱 실패. TeamCode: {}, Error: {}", teamCode, e.getMessage(), e);
             }
         }
         return null;
+    }
+
+    public void syncTeamToRedis(Team dbTeam) {
+        redisLockHelper.executeWithLock(
+                TEAM_REDIS_LOCK_KEY,
+                5,
+                10,
+                () -> {
+                    doSyncTeamToRedis(dbTeam);
+                    return null;
+                }
+        );
+    }
+
+    public void doSyncTeamToRedis(Team dbTeam) {
+        logger.info("Team Redis 동기화 시작. {}", dbTeam.getTeamCode());
+        saveTeam(dbTeam);
+        logger.info("Team Redis 동기화 완료. {}", dbTeam.getTeamCode());
     }
 
     /*** Stadium ***/
@@ -68,47 +101,136 @@ public class RedisRepository {
         saveToRedis(STADIUM_CODE_PREFIX + stadiumInfo.getStadiumCode(), stadiumInfo, null);
     }
 
-    public StadiumDTO.StadiumResponse findStadium(Integer stadiumCode) {
+    public StadiumDTO.StadiumInfo findStadium(Integer stadiumCode) {
         ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
         String stadiumInfoKey = STADIUM_CODE_PREFIX + stadiumCode;
         String stadiumInfoJson = valueOperations.get(stadiumInfoKey);
 
-        SetOperations<String, String> setOperations = redisTemplate.opsForSet();
-        String foodInfoKey = FOOD_CODE_PREFIX + stadiumCode;
-        Set<String> foodInfoJsonSet = setOperations.members(foodInfoKey);
-
         if (stadiumInfoJson != null) {
             try {
-                StadiumDTO.StadiumResponse stadiumResponse = objectMapper.readValue(stadiumInfoJson, StadiumDTO.StadiumResponse.class);
-
-                if (foodInfoJsonSet != null && !foodInfoJsonSet.isEmpty()) {
-                    Set<StadiumDTO.FoodResponse> foodList = new HashSet<>();
-                    for (String foodInfoJson : foodInfoJsonSet) {
-                        StadiumDTO.FoodResponse foodResponse = objectMapper.readValue(foodInfoJson, StadiumDTO.FoodResponse.class);
-                        foodList.add(foodResponse);
-                    }
-                    stadiumResponse.setFoodList(foodList);
-                } else {
-                    return null;
-                }
-                return stadiumResponse;
+                Stadium stadiumResponse = objectMapper.readValue(stadiumInfoJson, Stadium.class);
+                logger.info("* Redis * 구장 정보 조회 성공. StadiumCode: {}", stadiumCode);
+                return StadiumDTO.StadiumInfo.builder()
+                        .stadiumName(stadiumResponse.getStadiumName())
+                        .stadiumLocation(stadiumResponse.getStadiumLocation())
+                        .teamName(stadiumResponse.getTeamName())
+                        .build();
             } catch (JsonProcessingException e) {
-                logger.error("Failed to convert stadium JSON to StadiumResponse. Key: {}, Error: {}", stadiumInfoKey, e.getMessage(), e);
+                logger.error("Redis JSON 파싱 실패. StadiumCode: {}, Error: {}", stadiumCode, e.getMessage(), e);
             }
         }
         return null;
     }
 
+    public void syncStadiumToRedis(Stadium dbTeam) {
+        redisLockHelper.executeWithLock(
+                STADIUM_REDIS_LOCK_KEY,
+                5,
+                10,
+                () -> {
+                    doSyncStadiumToRedis(dbTeam);
+                    return null;
+                }
+        );
+    }
+
+    public void doSyncStadiumToRedis(Stadium dbStadium) {
+        logger.info("Stadium Redis 동기화 시작. {}", dbStadium.getStadiumName());
+        saveStadium(dbStadium);
+        logger.info("Stadium Redis 동기화 완료. {}", dbStadium.getStadiumName());
+    }
+
     /*** Food ***/
     public void saveFood(Food foodDetails, Integer stadiumCode) {
         String foodInfoKey = FOOD_CODE_PREFIX + stadiumCode;
+        String hashKey = String.valueOf(foodDetails.getId());
         try {
             String foodInfoJson = objectMapper.writeValueAsString(foodDetails);
-            SetOperations<String, String> setOperations = redisTemplate.opsForSet();
-            setOperations.add(foodInfoKey, foodInfoJson);
+            redisTemplate.opsForHash().put(foodInfoKey, hashKey, foodInfoJson);
         } catch (JsonProcessingException e) {
-            logError("FoodInfo", stadiumCode.toString(), e);
+            logError("FoodInfo", foodInfoKey, e);
         }
+    }
+
+    public Set<StadiumDTO.FoodResponse> findFood(Integer stadiumCode) {
+        String foodInfoKey = FOOD_CODE_PREFIX + stadiumCode;
+        Map<Object, Object> redisData = redisTemplate.opsForHash().entries(foodInfoKey);
+
+        Set<StadiumDTO.FoodResponse> foodList = new LinkedHashSet<>();
+        redisData.values().stream()
+                .map(String.class::cast)
+                .map(this::parseJsonToFood)
+                .filter(Objects::nonNull)
+                .map(food -> convertToSpecificFood(food))
+                .forEach(foodList::add);
+
+        logger.info("* Redis * 식음료 정보 조회 성공. StadiumCode: {}", stadiumCode);
+        return foodList;
+    }
+
+    private Food parseJsonToFood(String json) {
+        try {
+            return objectMapper.readValue(json, Food.class);
+        } catch (JsonProcessingException e) {
+            logger.error("Redis JSON 파싱 실패. Food: {}, Error: {}", json, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private StadiumDTO.FoodResponse convertToSpecificFood(Food food) {
+        return StadiumDTO.FoodResponse.builder()
+                .foodName(food.getFoodName())
+                .foodLocation(food.getFoodLocation())
+                .foodImg(food.getFoodImg())
+                .build();
+    }
+
+    public void syncFoodToRedis(List<Food> dbFoods, String currentRedisKey) {
+        redisLockHelper.executeWithLock(
+                FOOD_REDIS_LOCK_KEY,
+                10,
+                60,
+                () -> {
+                    doSyncFoodToRedis(dbFoods, currentRedisKey);
+                    return null;
+                }
+        );
+    }
+
+    public void doSyncFoodToRedis(List<Food> dbFoods, String currentRedisKey) {
+        logger.info("<동기화 시작> Redis Food. MongoDB 데이터 {}개.", dbFoods.size());
+
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(currentRedisKey))) {
+            try {
+                redisTemplate.delete(currentRedisKey);
+                logger.info("<동기화 중> Redis Food 데이터 삭제 완료. {}", currentRedisKey);
+            } catch (Exception e) {
+                logger.error("<동기화 오류> Redis Food 키 삭제 중 오류 발생", e);
+            }
+        } else {
+            logger.info("<동기화 중> Redis에 Food 데이터 없음. 삭제 단계 건너뛰기.");
+        }
+
+        if (dbFoods != null && !dbFoods.isEmpty()) {
+            Map<String, String> redisMap = new HashMap<>();
+            for (Food food : dbFoods) {
+                try {
+                    String key = food.getId().toString();
+                    String value = objectMapper.writeValueAsString(food);
+                    redisMap.put(key, value);
+                } catch (JsonProcessingException e) {
+                    logger.error("<동기화 오류> JSON 직렬화 오류: foodId={}, name={}", food.getId(), food.getFoodName(), e);
+                }
+            }
+
+            if (!redisMap.isEmpty()) {
+                redisTemplate.opsForHash().putAll(currentRedisKey, redisMap);
+                logger.info("<동기화 중> Redis Food 데이터 저장 완료. {}개", redisMap.size());
+            }
+        } else {
+            logger.info("<동기화 중> MongoDB에 Food 데이터 없음. Redis 저장 단계 건너뛰기.");
+        }
+        logger.info("<동기화 완료> Redis Food.");
     }
 
     /*** RANK ***/
@@ -136,10 +258,21 @@ public class RedisRepository {
 
             if (json != null) {
                 try {
-                    TeamDTO.RankResponse rank = objectMapper.readValue(json, TeamDTO.RankResponse.class);
-                    rankResponses.add(rank);
+                    TeamRank rank = objectMapper.readValue(json, TeamRank.class);
+                    TeamDTO.RankResponse rankInfo = TeamDTO.RankResponse.builder()
+                            .teamRank(rank.getTeamRank())
+                            .team(rank.getTeam())
+                            .game(rank.getGame())
+                            .win(rank.getWin())
+                            .lose(rank.getLose())
+                            .draw(rank.getDraw())
+                            .winningRate(rank.getWinningRate())
+                            .difference(rank.getDifference())
+                            .build();
+
+                    rankResponses.add(rankInfo);
                 } catch (JsonProcessingException e) {
-                    logger.error("Redis JSON 파싱 실패: {}", e.getMessage());
+                    logger.error("Redis JSON 파싱 실패: Rank: {}, Error: {}", json, e.getMessage(), e);
                     return Collections.emptyList();
                 }
             }
@@ -161,17 +294,17 @@ public class RedisRepository {
     }
 
     public void doSyncRankToRedis(List<TeamRank> dbRanks, Set<String> currentRedisKeys) {
-        logger.info("Rank Redis 동기화 시작. MongoDB 데이터 {}개.", dbRanks.size());
+        logger.info("<동기화 시작> Redis Rank. MongoDB 데이터 {}개.", dbRanks.size());
 
         if (currentRedisKeys != null && !currentRedisKeys.isEmpty()) {
             try {
                 Long deletedCount = redisTemplate.delete(currentRedisKeys);
-                logger.info("기존 Redis 데이터 {}개 삭제 완료.", deletedCount != null ? deletedCount : 0);
+                logger.info("<동기화 중> Redis Rank 데이터 삭제 완료. {}", deletedCount != null ? deletedCount : 0);
             } catch (Exception e) {
-                logger.error("Redis 기존 키 삭제 중 오류 발생", e);
+                logger.error("<동기화 오류> Redis Rank 키 삭제 중 오류 발생", e);
             }
         } else {
-            logger.info("Redis에 기존 데이터 없음. 삭제 단계 건너뛰기.");
+            logger.info("<동기화 중> Redis에 Rank 데이터 없음. 삭제 단계 건너뛰기.");
         }
 
         if (dbRanks != null && !dbRanks.isEmpty()) {
@@ -181,25 +314,18 @@ public class RedisRepository {
                     String rankJson = objectMapper.writeValueAsString(rank);
                     dataToSave.put(getRedisKeyRank(rank.getRankKey()), rankJson);
                 } catch (JsonProcessingException e) {
-                    logger.error("TeamRank 객체를 JSON으로 변환 중 오류 발생: {}", rank, e);
+                    logger.error("<동기화 오류> JSON 직렬화 오류: TeamRank={}", rank, e);
                 }
             }
 
             if (!dataToSave.isEmpty()) {
-                try {
-                    redisTemplate.opsForValue().multiSet(dataToSave);
-                    logger.info("Redis에 새로운 데이터 {}개 일괄 저장 완료.", dataToSave.size());
-                } catch (Exception e) {
-                    logger.error("Redis 새 데이터 일괄 저장 중 오류 발생", e);
-                }
-            } else {
-                logger.info("JSON 변환에 성공한 데이터가 없어 Redis에 저장할 데이터가 없습니다.");
+                redisTemplate.opsForValue().multiSet(dataToSave);
+                logger.info("<동기화 중> Redis Rank 데이터 저장 완료. {}개", dataToSave.size());
             }
         } else {
-            logger.info("MongoDB에 데이터가 없어 Redis에 저장할 데이터가 없습니다.");
+            logger.info("<동기화 중> MongoDB에 Rank 데이터 없음. Redis 저장 단계 건너뛰기.");
         }
-
-        logger.info("Rank Redis 동기화 완료.");
+        logger.info("<동기화 완료> Redis Rank.");
     }
 
     /*** SCHEDULE ***/
@@ -233,7 +359,7 @@ public class RedisRepository {
                 Set<TeamDTO.SpecificSchedule> specificSchedules;
 
                 if (!redisCount.equals(mongoCount)) {
-                    logger.info("Schedule Redis 동기화 필요: {} / {}. MongoDB: {}개, Redis: {}개", teamCode, date, mongoCount, redisCount);
+                    logger.info("Schedule Redis 동기화 필요. {} / {}. MongoDB: {}개, Redis: {}개", teamCode, date, mongoCount, redisCount);
                     List<TeamSchedule> dbSchedules = teamScheduleRepository.findByDateAndTeam(date, teamCode);
                     syncScheduleToRedis(dbSchedules, redisKey);
 
@@ -242,6 +368,7 @@ public class RedisRepository {
                             .collect(Collectors.toCollection(LinkedHashSet::new));
                 } else {
                     specificSchedules = getSchedulesForMonth(date, teamCode);
+                    logger.info("* Redis * 스케줄 정보 조회 성공 {}.", date);
                 }
 
                 TeamDTO.ScheduleResponse scheduleResponse = new TeamDTO.ScheduleResponse();
@@ -283,17 +410,17 @@ public class RedisRepository {
     }
 
     public void doSyncScheduleToRedis(List<TeamSchedule> dbSchedules, String currentRedisKey) {
-        logger.info("Schedule Redis 동기화 시작. MongoDB 데이터 {}개.", dbSchedules.size());
+        logger.info("<동기화 시작> Redis Schedule. MongoDB 데이터 {}개.", dbSchedules.size());
 
         if (Boolean.TRUE.equals(redisTemplate.hasKey(currentRedisKey))) {
             try {
                 redisTemplate.delete(currentRedisKey);
-                logger.info("기존 Redis schedule 데이터 삭제 완료. {}", currentRedisKey);
+                logger.info("<동기화 중> Redis Schedule 데이터 삭제 완료. {}", currentRedisKey);
             } catch (Exception e) {
-                logger.error("Redis 기존 키 삭제 중 오류 발생", e);
+                logger.error("<동기화 오류> Redis Schedule 키 삭제 중 오류 발생", e);
             }
         } else {
-            logger.info("Redis에 기존 데이터 없음. 삭제 단계 건너뛰기.");
+            logger.info("<동기화 중> Redis에 Schedule 데이터 없음. 삭제 단계 건너뛰기.");
         }
 
         if (dbSchedules != null && !dbSchedules.isEmpty()) {
@@ -305,7 +432,7 @@ public class RedisRepository {
                                     try {
                                         return objectMapper.writeValueAsString(schedule);
                                     } catch (JsonProcessingException e) {
-                                        logger.error("JSON 직렬화 오류: {}", schedule, e);
+                                        logger.error("<동기화 오류> JSON 직렬화 오류: Schedule={}", schedule, e);
                                         return null;
                                     }
                                 },
@@ -313,22 +440,21 @@ public class RedisRepository {
                         ));
 
                 redisTemplate.opsForHash().putAll(currentRedisKey, redisMap);
-                logger.info("Redis에 새 hash 데이터 {}개 저장 완료.", redisMap.size());
+                logger.info("<동기화 중> Redis Schedule 데이터 저장 완료. {}개", redisMap.size());
             } catch (Exception e) {
-                logger.error("Redis 새 데이터 일괄 저장 중 오류 발생", e);
+                logger.error("<동기화 오류> Redis Schedule 데이터 일괄 저장 중 오류 발생", e);
             }
         } else {
-            logger.info("MongoDB에 데이터가 없어 Redis에 저장할 데이터가 없습니다.");
+            logger.info("<동기화 중> MongoDB에 Schedule 데이터 없음. Redis 저장 단계 건너뛰기.");
         }
-
-        logger.info("Schedule Redis 동기화 완료.");
+        logger.info("<동기화 완료> Redis Schedule.");
     }
 
     private TeamSchedule parseJsonToSchedule(String json) {
         try {
             return objectMapper.readValue(json, TeamSchedule.class);
         } catch (IOException e) {
-            logger.error("Failed to parse JSON to TeamSchedule: {}", json, e);
+            logger.error("Redis JSON 파싱 실패. Schedule: {}", json, e);
             return null;
         }
     }
@@ -345,6 +471,116 @@ public class RedisRepository {
                 .cancellationReason(schedule.getCancellationReason())
                 .logoUrl(teamCode.equals(schedule.getHomeTeam()) ? schedule.getAwayImg() : schedule.getHomeImg())
                 .build();
+    }
+
+    /*** isSyncRequired ***/
+    public void cronSyncAllTeamsToRedis() {
+        List<Team> dbTeams = teamRepository.findAll();
+
+        for (Team dbTeam : dbTeams) {
+            try {
+                String redisKey = TEAM_CODE_PREFIX + dbTeam.getTeamCode();
+                String redisValue = redisTemplate.opsForValue().get(redisKey);
+
+                String dbJson = objectMapper.writeValueAsString(dbTeam);
+                if (redisValue == null || !redisValue.equals(dbJson)) {
+                    redisTemplate.opsForValue().set(redisKey, dbJson);
+                    logger.info("[Team] Redis 갱신: {}", dbTeam.getTeamCode());
+                }
+            } catch (JsonProcessingException e) {
+                logger.error("[Team] JSON 직렬화 실패. TeamCode: {}", dbTeam.getTeamCode(), e);
+            }
+        }
+    }
+
+    public void cronSyncAllStadiumsToRedis() {
+        List<Stadium> dbStadiums = stadiumRepository.findAll();
+
+        for (Stadium dbStadium : dbStadiums) {
+            try {
+                String redisKey = STADIUM_CODE_PREFIX + dbStadium.getStadiumCode();
+                String redisValue = redisTemplate.opsForValue().get(redisKey);
+
+                StadiumDTO.StadiumRequest dto = StadiumDTO.StadiumRequest.builder()
+                        .stadiumCode(dbStadium.getStadiumCode())
+                        .stadiumLocation(dbStadium.getStadiumLocation())
+                        .stadiumName(dbStadium.getStadiumName())
+                        .teamName(dbStadium.getTeamName())
+                        .build();
+
+                String dbJson = objectMapper.writeValueAsString(dto);
+                if (redisValue == null || !redisValue.equals(dbJson)) {
+                    redisTemplate.opsForValue().set(redisKey, dbJson);
+                    logger.info("[Stadium] Redis 갱신: {}", dbStadium.getStadiumName());
+                }
+            } catch (JsonProcessingException e) {
+                logger.error("[Stadium] JSON 직렬화 실패. Stadium: {}", dbStadium.getStadiumName(), e);
+            }
+        }
+    }
+
+    public void cronSyncAllFoodsToRedis() {
+        List<Stadium> dbStadiums = stadiumRepository.findAll();
+
+        for (Stadium dbStadium : dbStadiums) {
+            Integer stadiumCode = dbStadium.getStadiumCode();
+            String redisKey = FOOD_CODE_PREFIX + stadiumCode;
+
+            List<StadiumFood> stadiumFoods = stadiumFoodRepository.findByStadiumCodeWithFood(stadiumCode);
+
+            for (StadiumFood stadiumFood : stadiumFoods) {
+                Food food = stadiumFood.getFood();
+                Long foodId = food.getId();
+                String hashKey = foodId.toString();
+
+                try {
+                    Object redisObj = redisTemplate.opsForHash().get(redisKey, hashKey);
+                    String redisJson = redisObj != null ? redisObj.toString() : null;
+
+                    String foodJson = objectMapper.writeValueAsString(food);
+                    if (redisJson == null || !redisJson.equals(foodJson)) {
+                        redisTemplate.opsForHash().put(redisKey, foodId.toString(), foodJson);
+                        logger.info("[Food] Redis 갱신: stadium={}, foodId={}, foodName={}", dbStadium.getStadiumName(), foodId, food.getFoodName());
+                    }
+                } catch (JsonProcessingException e) {
+                    logger.error("[Food] JSON 직렬화 실패: foodId={}, foodName={}", foodId, food.getFoodName(), e);
+                }
+            }
+        }
+    }
+
+    public boolean isSyncRequiredRank(TeamRank current, String redisKey) {
+        try {
+            String key = getRedisKeyRank(redisKey);
+            String redisJson = redisTemplate.opsForValue().get(key);
+            if (redisJson == null) return true;
+
+            String currentJson = objectMapper.writeValueAsString(current);
+            return !currentJson.equals(redisJson);
+        } catch (JsonProcessingException e) {
+            logger.error("[TeamRank] JSON 직렬화 실패. TeamRank: {}", redisKey, e);
+            return true;
+        }
+    }
+
+    public boolean isSyncRequiredSchedule(TeamSchedule current, TeamSchedule newData, String hashKey) {
+        try {
+            String homeKey = getRedisKeySchedule(newData.getDate(), newData.getHomeTeam());
+            String awayKey = getRedisKeySchedule(newData.getDate(), newData.getAwayTeam());
+
+            Object homeObj = redisTemplate.opsForHash().get(homeKey, hashKey);
+            Object awayObj = redisTemplate.opsForHash().get(awayKey, hashKey);
+            if (homeObj == null || awayObj == null) return true;
+
+            String homeJson = homeObj.toString();
+            String awayJson = awayObj.toString();
+            String currentJson = objectMapper.writeValueAsString(current);
+
+            return !currentJson.equals(homeJson) && !currentJson.equals(awayJson);
+        } catch (JsonProcessingException e) {
+            logger.error("[Schedule] JSON 직렬화 실패. Schedule: {}", hashKey, e);
+            return true;
+        }
     }
 
     /*** HELPER METHODS ***/
@@ -374,24 +610,6 @@ public class RedisRepository {
             redisTemplate.opsForHash().delete(key, schedule.getScheduleKey());
         } catch (Exception e) {
             logError("DeleteFromHash", key + " - " + schedule.getScheduleKey(), e);
-        }
-    }
-
-    private void saveForSet(String key, TeamSchedule schedule) {
-        try {
-            String json = objectMapper.writeValueAsString(schedule);
-            redisTemplate.opsForSet().add(key, json);
-        } catch (JsonProcessingException e) {
-            logError("TeamSchedule", key, e);
-        }
-    }
-
-    private void deleteFromSet(String key, TeamSchedule schedule) {
-        try {
-            String json = objectMapper.writeValueAsString(schedule);
-            redisTemplate.opsForSet().remove(key, json);
-        } catch (JsonProcessingException e) {
-            logError("TeamSchedule", key, e);
         }
     }
 
