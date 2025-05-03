@@ -36,6 +36,7 @@ public class User {
     private String email;
 
     @Builder.Default
+    @Column(precision = 4, scale = 1)
     private BigDecimal winRate = BigDecimal.ZERO;
 
     @Builder.Default
@@ -43,6 +44,12 @@ public class User {
 
     @Builder.Default
     private Integer totalWins = 0;
+
+    @Builder.Default
+    private Integer totalLoses = 0;
+
+    @Builder.Default
+    private Integer totalDraws = 0;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<MatePost> matePosts;

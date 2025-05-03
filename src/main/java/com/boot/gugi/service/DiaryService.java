@@ -123,7 +123,7 @@ public class DiaryService {
             updateStatisticsForUpdate(user, newGameResult, oldGameResult);
         }
 
-        user.setWinRate(calculateWinningPercent(user.getTotalWins(), user.getTotalDiaryCount()));
+        user.setWinRate(calculateWinningPercent(user.getTotalWins(), user.getTotalLoses()));
         userRepository.save(user);
     }
 
@@ -131,26 +131,38 @@ public class DiaryService {
         user.setTotalDiaryCount(user.getTotalDiaryCount() + 1);
         if (newGameResult == GameResultEnum.WIN) {
             user.setTotalWins(user.getTotalWins() + 1);
+        } else if (newGameResult == GameResultEnum.LOSE) {
+            user.setTotalLoses(user.getTotalLoses() + 1);
+        } else {
+            user.setTotalDraws(user.getTotalDraws() + 1);
         }
     }
 
     private void updateStatisticsForUpdate(User user, GameResultEnum newGameResult, GameResultEnum oldGameResult) {
         if (oldGameResult == GameResultEnum.WIN) {
-            if (newGameResult == GameResultEnum.LOSE || newGameResult == GameResultEnum.DRAW) {
-                user.setTotalWins(user.getTotalWins() - 1);
-            }
-        } else {
-            if (newGameResult == GameResultEnum.WIN) {
-                user.setTotalWins(user.getTotalWins() + 1);
-            }
+            user.setTotalWins(user.getTotalWins() - 1);
+        } else if (oldGameResult == GameResultEnum.LOSE) {
+            user.setTotalLoses(user.getTotalLoses() - 1);
+        } else if (oldGameResult == GameResultEnum.DRAW) {
+            user.setTotalDraws(user.getTotalDraws() - 1);
+        }
+
+        if (newGameResult == GameResultEnum.WIN) {
+            user.setTotalWins(user.getTotalWins() + 1);
+        } else if (newGameResult == GameResultEnum.LOSE) {
+            user.setTotalLoses(user.getTotalLoses() + 1);
+        } else if (newGameResult == GameResultEnum.DRAW) {
+            user.setTotalDraws(user.getTotalDraws() + 1);
         }
     }
 
-    private BigDecimal calculateWinningPercent(Integer totalWins, Integer totalDiaryCount) {
-        if (totalDiaryCount > 0) {
-            return BigDecimal.valueOf(totalWins)
-                    .divide(BigDecimal.valueOf(totalDiaryCount), 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100));
+    private BigDecimal calculateWinningPercent(Integer totalWins, Integer totalLoses) {
+        Integer totalGames = totalWins + totalLoses;
+        if (totalGames > 0) {
+            BigDecimal winningRate = BigDecimal.valueOf(totalWins)
+                    .divide(BigDecimal.valueOf(totalGames), 4, RoundingMode.HALF_UP);
+
+            return winningRate.multiply(BigDecimal.valueOf(100));
         } else {
             return BigDecimal.ZERO;
         }
@@ -230,6 +242,8 @@ public class DiaryService {
         return new DiaryDTO.WinRateResponse(
                 nickName,
                 user.getWinRate(),
+                user.getTotalLoses(),
+                user.getTotalDraws(),
                 user.getTotalDiaryCount(),
                 user.getTotalWins()
         );

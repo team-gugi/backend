@@ -62,5 +62,7 @@ public class DiaryDTO {
         private BigDecimal winRate;
         private Integer totalDiaryCount;
         private Integer totalWins;
+        private Integer totalLoses;
+        private Integer totalDraws;
     }
 }
