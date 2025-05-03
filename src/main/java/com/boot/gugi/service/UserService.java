@@ -1,5 +1,7 @@
 package com.boot.gugi.service;
 
+import com.boot.gugi.base.Enum.AgeRangeEnum;
+import com.boot.gugi.base.Enum.SexEnum;
 import com.boot.gugi.base.dto.OnboardingInfoDTO;
 import com.boot.gugi.base.dto.UserDTO;
 import com.boot.gugi.exception.UserErrorResult;
@@ -70,28 +72,27 @@ public class UserService {
 
         String provider = jwtUtil.getProviderFromToken(registerToken);
         String providerId = jwtUtil.getProviderIdFromToken(registerToken);
-        String name = jwtUtil.getNameFromToken(registerToken);
         String email = jwtUtil.getEmailFromToken(registerToken);
-        Integer gender = jwtUtil.getGenderFromToken(registerToken);
-        Integer age = jwtUtil.getAgeFromToken(registerToken);
 
         User user = User.builder()
                 .provider(provider)
                 .providerId(providerId)
-                .name(name)
                 .email(email)
-                .gender(gender)
-                .age(age)
                 .build();
         userRepository.save(user);
 
         String uploadedImageUrl = s3Service.uploadImg(profileImg,DEFAULT_USER_IMAGE);
 
+        SexEnum sex = SexEnum.fromKorean(defineUserRequest.getSex());
+
+        AgeRangeEnum age = AgeRangeEnum.fromString(defineUserRequest.getAge());
         UserOnboardingInfo onboardingInfo = UserOnboardingInfo.builder()
                 .user(user)
                 .nickName(defineUserRequest.getNickName())
                 .introduction(defineUserRequest.getIntroduction())
                 .team(defineUserRequest.getTeam())
+                .sex(sex)
+                .age(age)
                 .profileImg(uploadedImageUrl)
                 .build();
         userOnboardingInfoRepository.save(onboardingInfo);
@@ -106,7 +107,6 @@ public class UserService {
         response.addHeader("Set-Cookie", accessCookie.toString());
 
         logger.info("userId : {}", user.getUserId());
-        logger.info("user-name : {}", user.getName());
         logger.info("user-email : {}", user.getEmail());
         logger.info("access-token : {}", accessCookie.toString());
         logger.info("refresh-token : {}", refreshCookie.toString());

@@ -48,16 +48,16 @@ public class JwtUtil {
     }
 
     // register-token 발급 메서드
-    public String generateRegisterToken(String provider, String providerId, String name, String email, Integer gender, Integer age, long expirationMillis) {
+    public String generateRegisterToken(String provider, String providerId, String email, long expirationMillis) {
         log.info("레지스터 토큰이 발행되었습니다.");
 
         return Jwts.builder()
                 .claim("provider", provider)
                 .claim("providerId", providerId)
-                .claim("name", name)
+                //.claim("name", name)
                 .claim("email", email)
-                .claim("gender", gender)
-                .claim("age", age)
+                //.claim("gender", gender)
+                //.claim("age", age)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMillis))
                 .signWith(this.getSigningKey())
@@ -98,20 +98,8 @@ public class JwtUtil {
         return getClaimFromToken(token, "providerId", String.class);
     }
 
-    public String getNameFromToken(String token) {
-        return getClaimFromToken(token, "name", String.class);
-    }
-
     public String getEmailFromToken(String token) {
         return getClaimFromToken(token, "email", String.class);
-    }
-
-    public Integer getGenderFromToken(String token) {
-        return getClaimFromToken(token, "gender", Integer.class);
-    }
-
-    public Integer getAgeFromToken(String token) {
-        return getClaimFromToken(token, "age", Integer.class);
     }
 
     // Jwt 토큰의 유효기간을 확인하는 메서드

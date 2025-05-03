@@ -10,6 +10,7 @@ import com.boot.gugi.exception.UserException;
 import com.boot.gugi.model.MatePost;
 import com.boot.gugi.model.MateRequest;
 import com.boot.gugi.model.User;
+import com.boot.gugi.model.UserOnboardingInfo;
 import com.boot.gugi.repository.MateRequestRepository;
 import com.boot.gugi.repository.MatePostRepository;
 import com.boot.gugi.repository.UserRepository;
@@ -191,6 +192,8 @@ public class MateService {
     @Transactional
     public void applyToMatePost(HttpServletRequest request, HttpServletResponse response, UUID mateId){
         User applicant = validateUser(request, response);
+        //UUID userId = applicant.getUserId();
+        UserOnboardingInfo userInfo = applicant.getOnboardingInfo();
         MatePost existingMatePost = getMatePostById(mateId);
 
         if (existingMatePost.getUser().getUserId().equals(applicant.getUserId())) {
@@ -206,17 +209,26 @@ public class MateService {
             throw new PostException(PostErrorResult.RECRUITMENT_COMPLETED);
         }
 
-        if (applicant.getGender() == null || applicant.getGender() == 0) {
+        if (userInfo.getSex() == null) {
             throw new PostException(PostErrorResult.GENDER_REQUIRED);
+        }
+        if (userInfo.getAge() == null) {
+            throw new PostException(PostErrorResult.AGE_REQUIRED);
         }
 
         GenderEnum genderOption = existingMatePost.getGender();
         if (genderOption != null) {
-            if (genderOption.equals(GenderEnum.FEMALE_ONLY) && applicant.getGender() != 2) {
+            if (genderOption.equals(GenderEnum.FEMALE_ONLY) && userInfo.getSex() != SexEnum.FEMALE) {
                 throw new PostException(PostErrorResult.GENDER_MISMATCH);
             }
-            else if (genderOption.equals(GenderEnum.MALE_ONLY) && applicant.getGender() != 1) {
+            else if (genderOption.equals(GenderEnum.MALE_ONLY) && userInfo.getSex() != SexEnum.MALE) {
                 throw new PostException(PostErrorResult.GENDER_MISMATCH);
+            }
+        }
+        AgeRangeEnum ageOption = existingMatePost.getAge();
+        if (ageOption != null) {
+            if (!userInfo.getAge().equals(ageOption)) {
+                throw new PostException(PostErrorResult.AGE_MISMATCH);
             }
         }
 

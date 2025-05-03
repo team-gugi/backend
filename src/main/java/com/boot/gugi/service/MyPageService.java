@@ -1,6 +1,8 @@
 package com.boot.gugi.service;
 
+import com.boot.gugi.base.Enum.AgeRangeEnum;
 import com.boot.gugi.base.Enum.ApplicationStatusEnum;
+import com.boot.gugi.base.Enum.SexEnum;
 import com.boot.gugi.base.dto.MateDTO;
 import com.boot.gugi.base.dto.MatePostStatusDTO;
 import com.boot.gugi.exception.PostErrorResult;
@@ -147,13 +149,16 @@ public class MyPageService {
         User applicant = mateRequest.getApplicant();
         UserOnboardingInfo applicantInfo = userOnboardingInfoRepository.findByUser(applicant);
 
+        AgeRangeEnum age = applicantInfo.getAge();
+        SexEnum sex = applicantInfo.getSex();
+
         return new MatePostStatusDTO.AppliedRequestNotificationDTO(
                 mateRequest.getRequestId(),
                 matePost.getTitle(),
                 applicantInfo.getNickName(),
                 new MatePostStatusDTO.ApplicantInfo(
-                        applicant.getAge(),
-                        applicant.getGenderKorean(),
+                        age.toKorean(),
+                        sex.toKorean(),
                         applicantInfo.getTeam(),
                         applicantInfo.getIntroduction(),
                         applicantInfo.getProfileImg()

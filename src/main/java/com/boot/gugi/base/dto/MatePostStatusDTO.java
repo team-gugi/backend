@@ -33,7 +33,7 @@ public class MatePostStatusDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ApplicantInfo {
-        private Integer age;
+        private String age;
         private String gender;
         private String team;
         private String introduction;

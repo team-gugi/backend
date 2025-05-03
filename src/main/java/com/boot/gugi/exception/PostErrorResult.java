@@ -19,7 +19,9 @@ public enum PostErrorResult implements BaseErrorCode {
     MAX_MEMBERS_REACHED(HttpStatus.CONFLICT,"409","MAX_MEMBERS_REACHED", "더 이상 요청을 수락할 수 없습니다. 최대 멤버 수에 도달했습니다."),
     RECRUITMENT_COMPLETED(HttpStatus.CONFLICT, "409", "RECRUITMENT_COMPLETED", "이미 모집이 완료된 포스트입니다."),
     GENDER_REQUIRED(HttpStatus.BAD_REQUEST, "400", "GENDER_REQUIRED", "성별 정보가 필요합니다. 마이페이지에서 본인 인증을 진행해주세요."),
-    GENDER_MISMATCH(HttpStatus.BAD_REQUEST, "400", "GENDER_MISMATCH", "성별이 일치하지 않습니다. 해당 성별만 신청 가능합니다.");
+    GENDER_MISMATCH(HttpStatus.BAD_REQUEST, "400", "GENDER_MISMATCH", "성별이 일치하지 않습니다. 해당 성별만 신청 가능합니다."),
+    AGE_REQUIRED(HttpStatus.BAD_REQUEST, "400", "AGE_REQUIRED", "연령 정보가 필요합니다. 마이페이지에서 본인 인증을 진행해주세요."),
+    AGE_MISMATCH(HttpStatus.BAD_REQUEST, "400", "AGE_MISMATCH", "연령이 일치하지 않습니다. 해당 연령만 신청 가능합니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

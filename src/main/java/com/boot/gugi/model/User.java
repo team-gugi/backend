@@ -23,6 +23,9 @@ public class User {
     @Column(columnDefinition = "BINARY(16)", unique = true, nullable = false)
     private UUID userId;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private UserOnboardingInfo onboardingInfo;
+
     @Column(nullable=false)
     private String provider;
 
@@ -30,16 +33,7 @@ public class User {
     private String providerId;
 
     @Column(nullable=false)
-    private String name;
-
-    @Column(nullable=false)
     private String email;
-
-    @Column
-    private Integer gender;
-
-    @Column
-    private Integer age;
 
     @Builder.Default
     private BigDecimal winRate = BigDecimal.ZERO;
@@ -53,13 +47,4 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<MatePost> matePosts;
 
-    public String getGenderKorean() {
-        if (gender == 1) {
-            return "남성";
-        } else if (gender == 2) {
-            return "여성";
-        } else {
-            throw new IllegalArgumentException("Invalid gender value: " + gender);
-        }
-    }
 }

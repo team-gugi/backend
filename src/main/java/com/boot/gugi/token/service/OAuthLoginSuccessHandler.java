@@ -53,15 +53,11 @@ public class OAuthLoginSuccessHandler extends SimpleUrlAuthenticationSuccessHand
         OAuth2UserInfo oAuth2UserInfo = getUserInfo(provider, authToken);
 
         String providerId = oAuth2UserInfo.getProviderId();
-        String name = oAuth2UserInfo.getName();
         String email = oAuth2UserInfo.getEmail();
-        Integer gender = oAuth2UserInfo.getGender();
-        Integer currentYear = java.time.Year.now().getValue();
-        Integer age = currentYear - oAuth2UserInfo.getBirthyear();
 
         User existingUser = userRepository.findByProviderId(providerId);
         if (existingUser == null) {
-            handleNewUser(request, response, provider, providerId, name, email, gender, age);
+            handleNewUser(request, response, provider, providerId, email);
         } else {
             handleExistingUser(request, response, existingUser);
         }
@@ -82,11 +78,11 @@ public class OAuthLoginSuccessHandler extends SimpleUrlAuthenticationSuccessHand
     }
 
     private void handleNewUser(HttpServletRequest request, HttpServletResponse response,
-                               String provider, String providerId, String name, String email, Integer gender, Integer age) throws IOException {
+                               String provider, String providerId, String email) throws IOException {
         log.info("신규 유저입니다. 등록을 진행합니다.");
 
         //register token
-        String registerToken = jwtUtil.generateRegisterToken(provider, providerId, name, email, gender, age, REGISTER_TOKEN_EXPIRATION_TIME);
+        String registerToken = jwtUtil.generateRegisterToken(provider, providerId, email, REGISTER_TOKEN_EXPIRATION_TIME);
         String redirectUri = String.format(REGISTER_TOKEN_REDIRECT_URI, registerToken);
         getRedirectStrategy().sendRedirect(request, response, redirectUri);
     }
@@ -111,9 +107,6 @@ public class OAuthLoginSuccessHandler extends SimpleUrlAuthenticationSuccessHand
 
     private void logUserInfo(OAuth2UserInfo oAuth2UserInfo) {
         log.info("이메일 : {}", oAuth2UserInfo.getEmail());
-        log.info("이름 : {}", oAuth2UserInfo.getName());
-        log.info("성별 : {}", oAuth2UserInfo.getGender());
-        log.info("출생년도 : {}", oAuth2UserInfo.getBirthyear());
         log.info("PROVIDER : {}", oAuth2UserInfo.getProvider());
         log.info("PROVIDER_ID : {}", oAuth2UserInfo.getProviderId());
     }

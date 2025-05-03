@@ -8,7 +8,8 @@ import java.util.Map;
 public enum AgeRangeEnum implements Translate {
     AGE_10s(10,"10대"),
     AGE_20s(20,"20대"),
-    AGE_30s(30,"30대");
+    AGE_30s(30,"30대"),
+    ANY(0, "그 외");
 
     private final int id;
     private final String displayNameKorean;

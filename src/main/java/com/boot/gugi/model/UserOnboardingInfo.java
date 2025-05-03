@@ -1,5 +1,8 @@
 package com.boot.gugi.model;
 
+import com.boot.gugi.base.Enum.AgeRangeEnum;
+import com.boot.gugi.base.Enum.GenderEnum;
+import com.boot.gugi.base.Enum.SexEnum;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,4 +33,13 @@ public class UserOnboardingInfo {
 
     @Column(nullable=false)
     private String team;
+
+    @Column(nullable=false)
+    @Enumerated(EnumType.STRING)
+    private SexEnum sex;
+
+    @Column(nullable=false)
+    @Enumerated(EnumType.STRING)
+    private AgeRangeEnum age;
+
 }

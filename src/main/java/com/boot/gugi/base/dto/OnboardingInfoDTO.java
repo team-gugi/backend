@@ -13,6 +13,8 @@ public class OnboardingInfoDTO {
         private String nickName;
         private String introduction;
         private String team;
+        private String sex;
+        private String age;
     }
 
     @Data
