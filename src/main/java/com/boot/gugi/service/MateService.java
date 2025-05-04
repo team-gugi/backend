@@ -43,6 +43,11 @@ public class MateService {
     public void createMatePost(HttpServletRequest request, HttpServletResponse response, MateDTO.MateRequest matePostDetails) {
         User writer = validateUser(request, response);
 
+        LocalDate inputDate = matePostDetails.getOptions().getDate();
+
+        if (inputDate.isBefore(LocalDate.now())) {
+            throw new PostException(PostErrorResult.INVALID_DATE_BEFORE_TODAY);
+        }
         MatePost savedMate = createMateInfo(writer, matePostDetails);
         matePostRepository.save(savedMate);
     }

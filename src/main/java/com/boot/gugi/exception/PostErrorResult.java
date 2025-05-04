@@ -21,7 +21,8 @@ public enum PostErrorResult implements BaseErrorCode {
     GENDER_REQUIRED(HttpStatus.BAD_REQUEST, "400", "GENDER_REQUIRED", "성별 정보가 필요합니다. 마이페이지에서 본인 인증을 진행해주세요."),
     GENDER_MISMATCH(HttpStatus.BAD_REQUEST, "400", "GENDER_MISMATCH", "성별이 일치하지 않습니다. 해당 성별만 신청 가능합니다."),
     AGE_REQUIRED(HttpStatus.BAD_REQUEST, "400", "AGE_REQUIRED", "연령 정보가 필요합니다. 마이페이지에서 본인 인증을 진행해주세요."),
-    AGE_MISMATCH(HttpStatus.BAD_REQUEST, "400", "AGE_MISMATCH", "연령이 일치하지 않습니다. 해당 연령만 신청 가능합니다.");
+    AGE_MISMATCH(HttpStatus.BAD_REQUEST, "400", "AGE_MISMATCH", "연령이 일치하지 않습니다. 해당 연령만 신청 가능합니다."),
+    INVALID_DATE_BEFORE_TODAY(HttpStatus.BAD_REQUEST, "400", "INVALID_DATE", "직관 날짜는 오늘 이후로만 설정할 수 있습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
