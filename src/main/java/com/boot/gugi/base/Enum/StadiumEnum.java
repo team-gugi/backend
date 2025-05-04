@@ -49,6 +49,10 @@ public enum StadiumEnum implements Translate {
     }
 
     public static StadiumEnum fromString(String stadiumName) {
+        if (stadiumName == null || stadiumName.isBlank()) {
+            return StadiumEnum.ANY;
+        }
+
         StadiumEnum stadium = KOREAN_NAME_MAP.get(stadiumName);
         if (stadium != null) {
             return stadium;

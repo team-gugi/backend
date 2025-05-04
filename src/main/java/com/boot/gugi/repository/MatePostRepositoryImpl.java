@@ -17,6 +17,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -49,9 +50,14 @@ public class MatePostRepositoryImpl implements MatePostRepositoryCustom {
 
         BooleanExpression baseCondition = qmatePost.expired.isFalse();
         BooleanExpression genderCondition = createGenderCondition(qmatePost, matePostOptions.getGender());
+        BooleanExpression ageCondition = createAgeRangeCondition(qmatePost, matePostOptions.getAge());
+        BooleanExpression dateCondition = createDateCondition(qmatePost, matePostOptions.getDate());
         BooleanExpression teamCondition = createTeamCondition(qmatePost, matePostOptions.getTeam());
+        BooleanExpression memberCondition = createMemberCondition(qmatePost, matePostOptions.getMember());
+        BooleanExpression stadiumCondition = createStadiumCondition(qmatePost, matePostOptions.getStadium());
 
-        NumberExpression<Long> matchScore = createMatchScore(qmatePost, matePostOptions, genderCondition, teamCondition);
+        NumberExpression<Long> matchScore = createMatchScore(qmatePost, matePostOptions,
+                genderCondition, ageCondition, dateCondition, teamCondition, memberCondition, stadiumCondition);
 
         Long maxScore = queryFactory
                 .select(matchScore.max())
@@ -64,7 +70,8 @@ public class MatePostRepositoryImpl implements MatePostRepositoryCustom {
                 .from(qmatePost)
                 .where(
                         baseCondition,
-                        buildCursorCondition(cursor, maxScore, matchScore, matchCountCursor, updatedAtCursor)
+                        buildCursorCondition(cursor, maxScore, matchScore, matchCountCursor, updatedAtCursor),
+                        matchScore.goe(1)
                 )
                 .orderBy(matchScore.desc(), qmatePost.updatedAt.desc())
                 .limit(size)
@@ -83,25 +90,52 @@ public class MatePostRepositoryImpl implements MatePostRepositoryCustom {
         return genderEnum == GenderEnum.ANY ? Expressions.TRUE : qmatePost.gender.eq(genderEnum);
     }
 
+    private BooleanExpression createAgeRangeCondition(QMatePost qmatePost, String age) {
+        AgeRangeEnum ageRangeEnum = AgeRangeEnum.fromString(age);
+        return ageRangeEnum == AgeRangeEnum.ANY ? Expressions.TRUE : qmatePost.age.eq(ageRangeEnum);
+    }
+
+    private BooleanExpression createDateCondition(QMatePost qmatePost, LocalDate date) {
+        if (date == null) {
+            return Expressions.TRUE;
+        }
+        return qmatePost.gameDate.eq(date);
+    }
+
     private BooleanExpression createTeamCondition(QMatePost qmatePost, String team) {
         TeamEnum teamEnum = TeamEnum.fromString(team);
         return teamEnum == TeamEnum.ANY ? Expressions.TRUE : qmatePost.homeTeam.eq(teamEnum);
     }
 
+    private BooleanExpression createMemberCondition(QMatePost qmatePost, Integer member) {
+        if (member == null) {
+            return Expressions.TRUE;
+        }
+        return qmatePost.member.eq(member);
+    }
+
+    private BooleanExpression createStadiumCondition(QMatePost qmatePost, String stadium) {
+        StadiumEnum stadiumEnum = StadiumEnum.fromString(stadium);
+        return stadiumEnum == StadiumEnum.ANY ? Expressions.TRUE : qmatePost.gameStadium.eq(stadiumEnum);
+    }
+
     private NumberExpression<Long> createMatchScore(QMatePost qmatePost, MateDTO.RequestOption matePostOptions,
-                                                    BooleanExpression genderCondition, BooleanExpression teamCondition) {
+                                                    BooleanExpression genderCondition, BooleanExpression ageCondition,
+                                                    BooleanExpression dateCondition, BooleanExpression teamCondition,
+                                                    BooleanExpression memberCondition, BooleanExpression stadiumCondition) {
         return new CaseBuilder()
-                .when(qmatePost.gameDate.eq(matePostOptions.getDate())).then(1L).otherwise(0L)
+                .when(dateCondition).then(1L).otherwise(0L)
                 .add(new CaseBuilder()
                         .when(genderCondition).then(1L).otherwise(0L))
                 .add(new CaseBuilder()
-                        .when(qmatePost.age.eq(AgeRangeEnum.fromString(matePostOptions.getAge()))).then(1L).otherwise(0L))
+                        .when(ageCondition).then(1L).otherwise(0L))
                 .add(new CaseBuilder()
                         .when(teamCondition).then(1L).otherwise(0L))
                 .add(new CaseBuilder()
-                        .when(qmatePost.gameStadium.eq(StadiumEnum.fromString(matePostOptions.getStadium()))).then(1L).otherwise(0L))
+                        .when(memberCondition).then(1L).otherwise(0L))
                 .add(new CaseBuilder()
-                        .when(qmatePost.member.eq(matePostOptions.getMember())).then(1L).otherwise(0L));
+                        .when(stadiumCondition).then(1L).otherwise(0L));
+
     }
 
     private BooleanExpression buildCursorCondition(String cursor, Long maxScore, NumberExpression<Long> matchScore, long matchCountCursor, LocalDateTime updatedAtCursor) {

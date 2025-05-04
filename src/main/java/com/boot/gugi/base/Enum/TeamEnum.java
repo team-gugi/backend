@@ -48,6 +48,10 @@ public enum TeamEnum implements Translate {
     }
 
     public static TeamEnum fromString(String teamName) {
+        if (teamName == null || teamName.isBlank()) {
+            return TeamEnum.ANY;
+        }
+
         TeamEnum team = KOREAN_NAME_MAP.get(teamName);
         if (team != null) {
             return team;

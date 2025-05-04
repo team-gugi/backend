@@ -34,6 +34,10 @@ public enum AgeRangeEnum implements Translate {
     }
 
     public static AgeRangeEnum fromString(String ageRange) {
+        if (ageRange == null || ageRange.isBlank()) {
+            return AgeRangeEnum.ANY;
+        }
+
         AgeRangeEnum age = DISPLAY_AGE_MAP.get(ageRange);
         if (age != null) {
             return age;

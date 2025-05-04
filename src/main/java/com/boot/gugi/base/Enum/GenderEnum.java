@@ -33,6 +33,10 @@ public enum GenderEnum {
     }
 
     public static GenderEnum fromKorean(String genderChoice) {
+        if (genderChoice == null || genderChoice.isBlank()) {
+            return GenderEnum.ANY;
+        }
+
         GenderEnum gender = DISPLAY_GENDER_MAP.get(genderChoice);
         if (gender != null) {
             return gender;
