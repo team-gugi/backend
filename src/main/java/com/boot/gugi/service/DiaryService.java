@@ -15,6 +15,7 @@ import com.boot.gugi.token.service.TokenServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,11 +38,14 @@ public class DiaryService {
     private final UserOnboardingInfoRepository userOnboardingInfoRepository;
     private final TokenServiceImpl tokenServiceImpl;
 
+    @Value("${default.diary.img.url}")
+    private String diaryDefaultImg;
+
     @Transactional
     public void createDiaryPost(HttpServletRequest request, HttpServletResponse response, DiaryDTO.DiaryRequest postInfo, MultipartFile gameImg) {
 
         UUID userId = tokenServiceImpl.getUserIdFromAccessToken(request, response);
-        String uploadedDiaryUrl = s3Service.uploadImg(gameImg, null);
+        String uploadedDiaryUrl = s3Service.uploadImg(gameImg, diaryDefaultImg);
         GameResultEnum gameResult = determineGameResult(postInfo.getHomeScore(), postInfo.getAwayScore());
 
         updateUserStatistics(userId, gameResult, null, true);
@@ -60,9 +64,7 @@ public class DiaryService {
             throw new PostException(PostErrorResult.UNAUTHORIZED_ACCESS);
         }
 
-        String uploadedDiaryUrl = (gameImg != null && !gameImg.isEmpty())
-                ? s3Service.uploadImg(gameImg, null)
-                : existingDiary.getGameImg();
+        String uploadedDiaryUrl = s3Service.uploadImg(gameImg, existingDiary.getGameImg());
         GameResultEnum gameResult = determineGameResult(postInfo.getHomeScore(), postInfo.getAwayScore());
 
         updateUserStatistics(userId, gameResult, existingDiary.getGameResult(), false);
