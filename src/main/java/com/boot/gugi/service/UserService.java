@@ -140,7 +140,7 @@ public class UserService {
     public UserDTO.UserResponse updateUser(HttpServletRequest request, HttpServletResponse response,
                                            UserDTO.UserRequest userDTO, MultipartFile profileImg) {
         User user = validateUser(request, response);
-        String uploadedImageUrl = s3Service.uploadImg(profileImg,DEFAULT_USER_IMAGE);
+        String uploadedImageUrl = s3Service.uploadImg(profileImg,user.getOnboardingInfo().getProfileImg());
 
         UserOnboardingInfo updatedUser = updateUserDTO(user, userDTO, uploadedImageUrl);
         userOnboardingInfoRepository.save(updatedUser);
