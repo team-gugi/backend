@@ -242,10 +242,10 @@ public class DiaryService {
         return new DiaryDTO.WinRateResponse(
                 nickName,
                 user.getWinRate(),
-                user.getTotalLoses(),
-                user.getTotalDraws(),
                 user.getTotalDiaryCount(),
-                user.getTotalWins()
+                user.getTotalWins(),
+                user.getTotalLoses(),
+                user.getTotalDraws()
         );
     }
 }
