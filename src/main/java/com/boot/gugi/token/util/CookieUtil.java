@@ -19,6 +19,7 @@ public class CookieUtil {
         String cookieValue = jwtUtil.generateRefreshToken(userId, expirationMillis);
 
         return ResponseCookie.from(REFRESH_COOKIE_NAME, cookieValue)
+                .domain(".team-gugi.site")
                 .path("/")
                 .sameSite("None")
                 .httpOnly(true)
@@ -31,6 +32,7 @@ public class CookieUtil {
         String cookieValue = jwtUtil.generateAccessToken(userId, expirationMillis);
 
         return ResponseCookie.from(ACCESS_COOKIE_NAME, cookieValue)
+                .domain(".team-gugi.site")
                 .path("/")
                 .sameSite("None")
                 .httpOnly(true)
@@ -62,6 +64,7 @@ public class CookieUtil {
     public Cookie deleteCookie(String cookieName) {
         Cookie cookie = new Cookie(cookieName, "");
         cookie.setMaxAge(0);
+        cookie.setDomain(".team-gugi.site");
         cookie.setPath("/");
         return cookie;
     }

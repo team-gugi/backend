@@ -234,6 +234,7 @@ public class UserService {
         for (String cookieName : cookieNames) {
             ResponseCookie responseCookie = ResponseCookie.from(cookieName, null)
                     .maxAge(0)
+                    .domain(".team-gugi.site")
                     .path("/")
                     .httpOnly(true)
                     .secure(true)
