@@ -58,7 +58,7 @@ public class DiaryDTO {
     @AllArgsConstructor
     public static class WinRateResponse {
         private String nickName;
-        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "0.00")
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "0.0")
         private BigDecimal winRate;
         private Integer totalDiaryCount;
         private Integer totalWins;
