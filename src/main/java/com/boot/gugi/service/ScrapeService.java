@@ -14,7 +14,9 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.*;
 
 @Service
@@ -103,6 +106,7 @@ public class ScrapeService {
         options.addArguments("--disable-gpu");
 
         WebDriver driver = new ChromeDriver(options);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
 
         List<TeamDTO.ScheduleRequest> scheduleResponseList = new ArrayList<>();
         try {
@@ -113,11 +117,20 @@ public class ScrapeService {
             Select monthSelect = new Select(driver.findElement(By.id("ddlMonth")));
 
             seriesSelect.selectByValue("0,9,6");
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.id("boxList")));
+
             for (int year = 2024; year <= 2025; year++) {
                 yearSelect.selectByValue(String.valueOf(year));
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.className("tbl-type06")));
 
-                for (int month = 1; month <= 12; month++) {
+                for (int month = 3; month <= 10; month++) {
+                    WebElement oldTableBody = driver.findElement(By.cssSelector(".tbl-type06 tbody"));
                     monthSelect.selectByValue(String.format("%02d", month));
+                    wait.until(ExpectedConditions.stalenessOf(oldTableBody));
+
+                    wait.until(ExpectedConditions.numberOfElementsToBeMoreThan(
+                            By.cssSelector(".tbl-type06 tbody tr"), 0
+                    ));
 
                     WebElement table = driver.findElement(By.className("tbl-type06"));
                     WebElement tbody = table.findElement(By.tagName("tbody"));
