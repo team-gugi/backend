@@ -65,6 +65,9 @@ dependencies {
 	implementation 'io.github.bonigarcia:webdrivermanager:5.9.2'
 	//Redisson
 	implementation 'org.redisson:redisson-spring-boot-starter:3.25.2'
+	//Prometheus
+	implementation "io.micrometer:micrometer-registry-prometheus"
+	implementation "org.springframework.boot:spring-boot-starter-actuator"
 }
 
 def generated = 'build/generated'
