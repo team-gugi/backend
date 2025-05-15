@@ -74,12 +74,19 @@ public class UserService {
         String providerId = jwtUtil.getProviderIdFromToken(registerToken);
         String email = jwtUtil.getEmailFromToken(registerToken);
 
-        User user = User.builder()
-                .provider(provider)
-                .providerId(providerId)
-                .email(email)
-                .build();
-        userRepository.save(user);
+        User user = userRepository.findByProviderId(providerId);
+        if (user != null) {
+            if (userOnboardingInfoRepository.existsByUser(user)) {
+                throw new UserException(UserErrorResult.ALREADY_REGISTERED_USER);
+            }
+        } else {
+            user = User.builder()
+                    .provider(provider)
+                    .providerId(providerId)
+                    .email(email)
+                    .build();
+            userRepository.save(user);
+        }
 
         String uploadedImageUrl = s3Service.uploadImg(profileImg,DEFAULT_USER_IMAGE);
 

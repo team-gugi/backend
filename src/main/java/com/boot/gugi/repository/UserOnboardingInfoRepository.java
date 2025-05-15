@@ -13,4 +13,6 @@ public interface UserOnboardingInfoRepository extends JpaRepository<UserOnboardi
     String findNickNameByUser(@Param("user") User user);
 
     void deleteByUser(User user);
+
+    boolean existsByUser(User user);
 }
