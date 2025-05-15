@@ -1,8 +1,11 @@
 package com.boot.gugi.token.service;
 
+import com.boot.gugi.exception.UserErrorResult;
+import com.boot.gugi.exception.UserException;
+import com.boot.gugi.model.User;
+import com.boot.gugi.repository.UserRepository;
 import com.boot.gugi.token.exception.TokenErrorResult;
 import com.boot.gugi.token.exception.TokenException;
-import com.boot.gugi.token.model.RefreshToken;
 import com.boot.gugi.token.repository.BlacklistTokenRepository;
 import com.boot.gugi.token.repository.RefreshTokenRepository;
 import com.boot.gugi.token.util.CookieUtil;
@@ -33,6 +36,7 @@ public class TokenServiceImpl implements TokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final BlacklistTokenRepository blacklistTokenRepository;
+    private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
 
@@ -47,10 +51,10 @@ public class TokenServiceImpl implements TokenService {
         String refreshToken = cookie.getValue();
 
         UUID userId = UUID.fromString(jwtUtil.getUserIdFromToken(refreshToken));
-        RefreshToken existRefreshToken = refreshTokenRepository.findByUserId(userId)
-                .orElseThrow(() -> new TokenException(TokenErrorResult.REFRESH_TOKEN_NOT_FOUND));
 
-        if (!existRefreshToken.getRefreshToken().equals(refreshToken) || jwtUtil.isTokenExpired(refreshToken)) {
+        User user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new UserException(UserErrorResult.NOT_FOUND_USER));
+        if (jwtUtil.isTokenExpired(refreshToken)) {
             throw new TokenException(TokenErrorResult.INVALID_REFRESH_TOKEN);
         }
 

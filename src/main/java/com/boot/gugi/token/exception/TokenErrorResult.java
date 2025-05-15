@@ -14,7 +14,7 @@ public enum TokenErrorResult implements BaseErrorCode {
     INVALID_REGISTER_TOKEN(HttpStatus.UNAUTHORIZED, "401", "INVALID_REGISTER_TOKEN", "유효하지 않은 레지스터 토큰입니다."),
     INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "401", "INVALID_ACCESS_TOKEN", "유효하지 않은 액세스 토큰입니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "401", "INVALID_REFRESH_TOKEN", "유효하지 않은 리프레쉬 토큰입니다."),
-    REFRESH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "404", "REFRESH_TOKEN_NOT_FOUND", "해당 유저 ID의 리프레쉬 토큰이 없습니다."),
+    REFRESH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "401", "REFRESH_TOKEN_NOT_FOUND", "해당 유저 ID의 리프레쉬 토큰이 없습니다."),
     ACCESS_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "404", "ACCESS_TOKEN_NOT_FOUND", "해당 유저 ID의 액세스 토큰이 없습니다."),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "400", "INVALID_REQUEST", "잘못된 토큰 요청입니다."),
     BLACKLISTED_TOKEN(HttpStatus.FORBIDDEN, "403", "BLACKLISTED_TOKEN", "블랙리스트에 등록된 토큰입니다. 다시 로그인해 주세요."),
