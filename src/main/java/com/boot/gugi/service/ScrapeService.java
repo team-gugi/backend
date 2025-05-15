@@ -124,13 +124,10 @@ public class ScrapeService {
                 wait.until(ExpectedConditions.presenceOfElementLocated(By.className("tbl-type06")));
 
                 for (int month = 3; month <= 10; month++) {
-                    WebElement oldTableBody = driver.findElement(By.cssSelector(".tbl-type06 tbody"));
                     monthSelect.selectByValue(String.format("%02d", month));
-                    wait.until(ExpectedConditions.stalenessOf(oldTableBody));
 
-                    wait.until(ExpectedConditions.numberOfElementsToBeMoreThan(
-                            By.cssSelector(".tbl-type06 tbody tr"), 0
-                    ));
+                    wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(
+                            By.cssSelector(".tbl-type06 tbody tr")));
 
                     WebElement table = driver.findElement(By.className("tbl-type06"));
                     WebElement tbody = table.findElement(By.tagName("tbody"));
