@@ -51,6 +51,7 @@ public class MatePostStatusDTO {
         private Integer daysSinceWritten;
         private Integer daysUntilGame;
         private Integer confirmedMembers;
+        private String contact;
         private MateDTO.ResponseOption options;
     }
 

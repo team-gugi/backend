@@ -181,6 +181,7 @@ public class MyPageService {
                 matePost.getDaysSinceWritten(),
                 matePost.getDaysUntilGame(),
                 matePost.getConfirmedMembers(),
+                matePost.getContact(),
                 new MateDTO.ResponseOption(
                         matePost.getGender().toKorean(),
                         matePost.getAge().toKorean(),
