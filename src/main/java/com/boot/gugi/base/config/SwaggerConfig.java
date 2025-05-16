@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
         servers = {
                 @Server(url = "https://api.team-gugi.site", description = "gugi https 서버입니다."),
                 @Server(url = "http://api.team-gugi.site", description = "gugi http 서버입니다."),
-                @Server(url = "http://localhost:8080", description = "gugi local 서버입니다.")
+                @Server(url = "http://localhost:8000", description = "gugi local 서버입니다.")
         }
 )
 

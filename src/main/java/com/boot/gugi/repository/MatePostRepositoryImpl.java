@@ -56,8 +56,12 @@ public class MatePostRepositoryImpl implements MatePostRepositoryCustom {
         BooleanExpression memberCondition = createMemberCondition(qmatePost, matePostOptions.getMember());
         BooleanExpression stadiumCondition = createStadiumCondition(qmatePost, matePostOptions.getStadium());
 
+        if (!Expressions.TRUE.equals(teamCondition)) {
+            baseCondition = baseCondition.and(teamCondition);
+        }
+
         NumberExpression<Long> matchScore = createMatchScore(qmatePost, matePostOptions,
-                genderCondition, ageCondition, dateCondition, teamCondition, memberCondition, stadiumCondition);
+                genderCondition, ageCondition, dateCondition, memberCondition, stadiumCondition);
 
         Long maxScore = queryFactory
                 .select(matchScore.max())
@@ -108,7 +112,7 @@ public class MatePostRepositoryImpl implements MatePostRepositoryCustom {
     }
 
     private BooleanExpression createMemberCondition(QMatePost qmatePost, Integer member) {
-        if (member == null) {
+        if (member == null || member == 1) {
             return Expressions.TRUE;
         }
         return qmatePost.member.eq(member);
@@ -121,7 +125,7 @@ public class MatePostRepositoryImpl implements MatePostRepositoryCustom {
 
     private NumberExpression<Long> createMatchScore(QMatePost qmatePost, MateDTO.RequestOption matePostOptions,
                                                     BooleanExpression genderCondition, BooleanExpression ageCondition,
-                                                    BooleanExpression dateCondition, BooleanExpression teamCondition,
+                                                    BooleanExpression dateCondition,
                                                     BooleanExpression memberCondition, BooleanExpression stadiumCondition) {
         return new CaseBuilder()
                 .when(dateCondition).then(1L).otherwise(0L)
@@ -129,8 +133,6 @@ public class MatePostRepositoryImpl implements MatePostRepositoryCustom {
                         .when(genderCondition).then(1L).otherwise(0L))
                 .add(new CaseBuilder()
                         .when(ageCondition).then(1L).otherwise(0L))
-                .add(new CaseBuilder()
-                        .when(teamCondition).then(1L).otherwise(0L))
                 .add(new CaseBuilder()
                         .when(memberCondition).then(1L).otherwise(0L))
                 .add(new CaseBuilder()
